@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-surface text-zinc-100 min-h-dvh;
+  }
+
+  html:not(.dark) body {
+    @apply bg-zinc-50 text-zinc-900;
+  }
+
+  html:not(.dark) .text-white {
+    @apply text-zinc-900;
+  }
+
+  html:not(.dark) .bg-surface {
+    @apply bg-zinc-50;
+  }
+
+  html:not(.dark) .bg-surface-raised {
+    @apply bg-white;
+  }
+
+  html:not(.dark) .border-surface-border {
+    @apply border-zinc-200;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply text-base;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .touch-target {
+    @apply min-h-[52px] min-w-[52px];
+  }
+}

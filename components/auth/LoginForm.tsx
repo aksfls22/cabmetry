@@ -1,0 +1,89 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { es } from "@/lib/i18n/es";
+import { translateAuthError } from "@/lib/i18n/translate-auth-error";
+
+export function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") ?? "/";
+  const authError = searchParams.get("error");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(
+    authError === "auth_callback" ? es.auth.sessionFailed : null
+  );
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    setLoading(false);
+
+    if (signInError) {
+      setError(translateAuthError(signInError.message));
+      return;
+    }
+
+    router.push(redirect);
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <Input
+        label={es.auth.email}
+        type="email"
+        autoComplete="email"
+        placeholder={es.auth.emailPlaceholder}
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <Input
+        label={es.auth.password}
+        type="password"
+        autoComplete="current-password"
+        placeholder={es.auth.passwordPlaceholder}
+        required
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      {error && (
+        <p
+          className="rounded-xl bg-expense/10 px-4 py-3 text-sm text-expense"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
+      <Button type="submit" disabled={loading}>
+        {loading ? es.auth.signingIn : es.auth.signIn}
+      </Button>
+
+      <p className="text-center text-sm text-zinc-500">
+        {es.auth.noAccount}{" "}
+        <Link href="/signup" className="font-medium text-accent hover:underline">
+          {es.auth.registerLink}
+        </Link>
+      </p>
+    </form>
+  );
+}
