@@ -1,4 +1,9 @@
-export type PaymentMethod = "cash" | "card" | "uber" | "bolt";
+export type PaymentMethod =
+  | "cash"
+  | "card"
+  | "uber"
+  | "bolt"
+  | "voucher";
 
 export interface Ride {
   id: string;
@@ -40,6 +45,7 @@ export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "card", label: "Tarjeta" },
   { value: "uber", label: "Uber" },
   { value: "bolt", label: "Bolt" },
+  { value: "voucher", label: "Vale" },
 ];
 
 export const EXPENSE_CATEGORIES = [

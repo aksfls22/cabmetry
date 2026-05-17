@@ -43,6 +43,7 @@ export function paymentLabel(method: PaymentMethod): string {
     card: "Tarjeta",
     uber: "Uber",
     bolt: "Bolt",
+    voucher: "Vale",
   };
   return labels[method];
 }

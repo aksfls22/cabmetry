@@ -24,7 +24,10 @@ export function RideForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+  
     setError(null);
+  
+    
 
     const parsed = parseFloat(amount.replace(",", "."));
     if (Number.isNaN(parsed) || parsed <= 0) {
