@@ -103,8 +103,6 @@ export async function getTodayStats(): Promise<TodayStats> {
     recentRides: data.recentRides,
     insights: data.insights,
   };
-}
-
 export async function getRides(limit = 100): Promise<Ride[]> {
   await requireUser();
   const supabase = createClient();
