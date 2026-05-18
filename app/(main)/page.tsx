@@ -46,37 +46,37 @@ export default async function DashboardPage() {
       ) : (
         <>
           <section className="mb-8" aria-label={es.dashboard.summaryAria}>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              {es.dashboard.summary}
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-            <div className="grid grid-cols-2 gap-3">
-  <StatCard
-    label={es.dashboard.paidToday}
-    value={data.paidIncome}
-    variant="profit"
-  />
+  <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+    {es.dashboard.summary}
+  </h2>
 
-  <StatCard
-    label={es.dashboard.pendingToday}
-    value={data.pendingIncome}
-    variant="accent"
-  />
+  <div className="grid grid-cols-2 gap-3">
+    <StatCard
+      label={es.dashboard.paidToday}
+      value={data.paidIncome}
+      variant="profit"
+    />
 
-  <StatCard
-    label={es.dashboard.expensesToday}
-    value={data.totalExpenses}
-    variant="expense"
-  />
+    <StatCard
+      label={es.dashboard.pendingToday}
+      value={data.pendingIncome}
+      variant="accent"
+    />
 
-  <StatCard
-    label={es.dashboard.ridesToday}
-    value={data.totalRides}
-    variant="accent"
-    isCount
-  />
-            </div>
-          </section>
+    <StatCard
+      label={es.dashboard.expensesToday}
+      value={data.totalExpenses}
+      variant="expense"
+    />
+
+    <StatCard
+      label={es.dashboard.ridesToday}
+      value={data.totalRides}
+      variant="accent"
+      isCount
+    />
+  </div>
+</section>
 
           <DashboardInsights insights={data.insights} hasRides={hasRides} />
 
