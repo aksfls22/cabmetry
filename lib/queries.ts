@@ -92,7 +92,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 }
 
 /** @deprecated Prefer getDashboardData — kept for compatibility */
-export async function getTodayStats(): Promise<TodayStats> {
+export async function getTodayStats(): Promise<DashboardData> {
   const data = await getDashboardData();
   return {
     paidIncome: data.paidIncome,
