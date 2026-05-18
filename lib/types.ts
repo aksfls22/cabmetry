@@ -24,7 +24,8 @@ export interface Expense {
 }
 
 export interface TodayStats {
-  totalEarnings: number;
+  paidIncome: number;
+  pendingIncome: number;
   totalRides: number;
   totalExpenses: number;
   netProfit: number;

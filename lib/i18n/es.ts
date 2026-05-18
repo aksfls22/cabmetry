@@ -42,12 +42,14 @@ export const es = {
   },
 
   dashboard: {
+    paidToday: "Cobrado hoy",
+  pendingToday: "Pendiente por cobrar",
     today: "Hoy",
     summary: "Resumen",
     summaryAria: "Resumen del día",
-    earningsToday: "Ingresos hoy",
+    paidToday: "Cobrado hoy",
+    pendingToday: "Pendiente por cobrar",
     expensesToday: "Gastos hoy",
-    netProfit: "Beneficio neto",
     ridesToday: "Carreras hoy",
     analysis: "Análisis del día",
     analysisAria: "Análisis del día",

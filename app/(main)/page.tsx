@@ -12,7 +12,8 @@ import type { DashboardData } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 const emptyDashboard: DashboardData = {
-  totalEarnings: 0,
+  paidIncome: 0,
+  pendingIncome: 0,
   totalRides: 0,
   totalExpenses: 0,
   netProfit: 0,
@@ -50,8 +51,8 @@ export default async function DashboardPage() {
             </h2>
             <div className="grid grid-cols-2 gap-3">
               <StatCard
-                label={es.dashboard.earningsToday}
-                value={data.totalEarnings}
+                label={es.dashboard.paidToday}
+                value={data.paidIncome}
                 variant="profit"
               />
               <StatCard
@@ -60,17 +61,29 @@ export default async function DashboardPage() {
                 variant="expense"
               />
               <StatCard
-                label={es.dashboard.netProfit}
-                value={data.netProfit}
-                variant={data.netProfit >= 0 ? "profit" : "expense"}
-                featured
-              />
-              <StatCard
-                label={es.dashboard.ridesToday}
-                value={data.totalRides}
-                variant="accent"
-                isCount
-              />
+  label={es.dashboard.paidToday}
+  value={data.paidIncome}
+  variant="profit"
+/>
+
+<StatCard
+  label={es.dashboard.pendingToday}
+  value={data.pendingIncome}
+  variant="accent"
+/>
+
+<StatCard
+  label={es.dashboard.expensesToday}
+  value={data.totalExpenses}
+  variant="expense"
+/>
+
+<StatCard
+  label={es.dashboard.ridesToday}
+  value={data.totalRides}
+  variant="accent"
+  isCount
+/>
             </div>
           </section>
 

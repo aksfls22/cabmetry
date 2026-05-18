@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getDashboardFinancialSummary } from "@/lib/financial";
 import type {
   DashboardData,
   DashboardInsights,
@@ -42,39 +43,51 @@ function buildInsights(rides: Ride[], totalEarnings: number): DashboardInsights 
 
 export async function getDashboardData(): Promise<DashboardData> {
   await requireUser();
+
   const supabase = createClient();
+
   const { start, end } = getTodayBounds();
 
-  const [ridesRes, expensesRes] = await Promise.all([
-    supabase
-      .from("rides")
-      .select("id, amount, payment_method, notes, created_at")
-      .gte("created_at", start)
-      .lt("created_at", end)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("expenses")
-      .select("amount")
-      .gte("created_at", start)
-      .lt("created_at", end),
-  ]);
+  // =========================
+  // RIDES
+  // =========================
 
-  if (ridesRes.error) throw ridesRes.error;
-  if (expensesRes.error) throw expensesRes.error;
+  const { data: ridesData, error: ridesError } = await supabase
+    .from("rides")
+    .select("id, amount, payment_method, notes, created_at")
+    .gte("created_at", start)
+    .lt("created_at", end)
+    .order("created_at", { ascending: false });
 
-  const rides = (ridesRes.data ?? []) as Ride[];
-  const expenses = expensesRes.data ?? [];
+  if (ridesError) {
+    throw ridesError;
+  }
 
-  const totalEarnings = rides.reduce((sum, r) => sum + Number(r.amount), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  // =========================
+  // FINANCIAL SUMMARY
+  // =========================
+
+  const financial = await getDashboardFinancialSummary();
+
+  const rides = (ridesData ?? []) as Ride[];
 
   return {
-    totalEarnings,
-    totalRides: rides.length,
-    totalExpenses,
-    netProfit: totalEarnings - totalExpenses,
+    paidIncome: financial.paidIncome,
+
+    pendingIncome: financial.pendingIncome,
+
+    totalExpenses: financial.totalExpenses,
+
+    totalRides: financial.totalRides,
+
+    netProfit: financial.netProfit,
+
     recentRides: rides.slice(0, RECENT_RIDES_LIMIT),
-    insights: buildInsights(rides, totalEarnings),
+
+    insights: buildInsights(
+      rides,
+      financial.paidIncome
+    ),
   };
 }
 

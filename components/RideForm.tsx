@@ -27,46 +27,114 @@ export function RideForm() {
   
     setError(null);
   
-    
-
     const parsed = parseFloat(amount.replace(",", "."));
+  
     if (Number.isNaN(parsed) || parsed <= 0) {
       setError(es.rides.invalidAmount);
       amountRef.current?.focus();
       return;
     }
-
+  
     setLoading(true);
+  
     const supabase = createClient();
-
+  
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
+  
     if (!user) {
       setLoading(false);
       setError(es.auth.loginRequiredRide);
       return;
     }
-
-    const { error: insertError } = await supabase.from("rides").insert({
-      user_id: user.id,
-      amount: parsed,
-      payment_method: paymentMethod,
-      notes: notes.trim() || null,
-    });
-
-    setLoading(false);
-
-    if (insertError) {
-      setError(translateDbError(insertError.message));
+  
+    // =========================
+    // CREATE RIDE
+    // =========================
+  
+    const { data: ride, error: rideError } = await supabase
+      .from("rides")
+      .insert({
+        user_id: user.id,
+        amount: parsed,
+        payment_method: paymentMethod,
+        notes: notes.trim() || null,
+      })
+      .select()
+      .single();
+  
+    if (rideError || !ride) {
+      setLoading(false);
+  
+      setError(
+        translateDbError(
+          rideError?.message || "Failed to create ride"
+        )
+      );
+  
       return;
     }
-
+  
+    // =========================
+    // PAYMENT LOGIC
+    // =========================
+  
+    const isVoucher = paymentMethod === "voucher";
+  
+    const dueDate = new Date();
+  
+    dueDate.setDate(dueDate.getDate() + 30);
+  
+    const { error: paymentError } = await supabase
+      .from("payments")
+      .insert({
+        ride_id: ride.id,
+  
+        user_id: user.id,
+  
+        payment_type: paymentMethod,
+  
+        payment_status: isVoucher
+          ? "pending"
+          : "paid",
+  
+        amount: parsed,
+  
+        due_date: isVoucher
+          ? dueDate.toISOString()
+          : null,
+  
+        paid_at: isVoucher
+          ? null
+          : new Date().toISOString(),
+      });
+  
+    // =========================
+    // ROLLBACK
+    // =========================
+  
+    if (paymentError) {
+      await supabase
+        .from("rides")
+        .delete()
+        .eq("id", ride.id);
+  
+      setLoading(false);
+  
+      setError(
+        translateDbError(paymentError.message)
+      );
+  
+      return;
+    }
+  
+    setLoading(false);
+  
     router.push("/");
+  
     router.refresh();
   }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Input
