@@ -50,40 +50,31 @@ export default async function DashboardPage() {
               {es.dashboard.summary}
             </h2>
             <div className="grid grid-cols-2 gap-3">
-              <StatCard
-                label={es.dashboard.paidToday}
-                value={data.paidIncome}
-                variant="profit"
-              />
-              <StatCard
-                label={es.dashboard.expensesToday}
-                value={data.totalExpenses}
-                variant="expense"
-              />
-              <StatCard
-  label={es.dashboard.paidToday}
-  value={data.paidIncome}
-  variant="profit"
-/>
+            <div className="grid grid-cols-2 gap-3">
+  <StatCard
+    label={es.dashboard.paidToday}
+    value={data.paidIncome}
+    variant="profit"
+  />
 
-<StatCard
-  label={es.dashboard.pendingToday}
-  value={data.pendingIncome}
-  variant="accent"
-/>
+  <StatCard
+    label={es.dashboard.pendingToday}
+    value={data.pendingIncome}
+    variant="accent"
+  />
 
-<StatCard
-  label={es.dashboard.expensesToday}
-  value={data.totalExpenses}
-  variant="expense"
-/>
+  <StatCard
+    label={es.dashboard.expensesToday}
+    value={data.totalExpenses}
+    variant="expense"
+  />
 
-<StatCard
-  label={es.dashboard.ridesToday}
-  value={data.totalRides}
-  variant="accent"
-  isCount
-/>
+  <StatCard
+    label={es.dashboard.ridesToday}
+    value={data.totalRides}
+    variant="accent"
+    isCount
+  />
             </div>
           </section>
 
