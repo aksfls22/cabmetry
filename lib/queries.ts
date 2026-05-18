@@ -95,10 +95,14 @@ export async function getDashboardData(): Promise<DashboardData> {
 export async function getTodayStats(): Promise<TodayStats> {
   const data = await getDashboardData();
   return {
-    totalEarnings: data.totalEarnings,
+    paidIncome: data.paidIncome,
+    pendingIncome: data.pendingIncome,
     totalRides: data.totalRides,
     totalExpenses: data.totalExpenses,
     netProfit: data.netProfit,
+    recentRides: data.recentRides,
+    insights: data.insights,
+  };
   };
 }
 
