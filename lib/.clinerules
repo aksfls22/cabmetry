@@ -1,0 +1,23 @@
+You are working on a production Next.js application called Capmetry.
+
+CRITICAL RULES:
+
+- Never rewrite the entire architecture.
+- Never move folders unless explicitly requested.
+- Never create duplicate components.
+- Never install dependencies unless approved first.
+- Never modify authentication logic unless requested.
+- Never modify Supabase configuration unless requested.
+- Never remove existing functionality.
+- Never change environment variables.
+- Never auto-refactor the entire app.
+- Keep all changes minimal and isolated.
+- Preserve existing design patterns.
+- Preserve Tailwind structure consistency.
+- Prefer editing existing components instead of creating new ones.
+- Always explain planned changes before editing files.
+- Ask before running terminal commands.
+- Focus on clean SaaS UI improvements.
+- Avoid unnecessary complexity.
+- Prioritize stability over cleverness.
+- Always keep responsive behavior intact.
