@@ -1,7 +1,7 @@
 import { fromZonedTime } from "date-fns-tz";
 
 export const APP_LOCALE = "es-ES";
-export const APP_TIMEZONE = "Europe/Madrid";
+export const APP_TIMEZONE = "Atlantic/Canary";
 
 /**
  * Returns UTC ISO bounds for the current local calendar day
