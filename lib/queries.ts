@@ -9,7 +9,7 @@ import type {
   Ride,
   TodayStats,
 } from "@/lib/types";
-import { getTodayBounds } from "@/lib/utils";
+import { getTodayBoundsUTC } from "@/lib/datetime";
 
 const RECENT_RIDES_LIMIT = 5;
 
@@ -46,7 +46,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const supabase = createClient();
 
-  const { start, end } = getTodayBounds();
+  const { start, end } = getTodayBoundsUTC();
 
   // =========================
   // RIDES
@@ -109,7 +109,7 @@ export async function getRides(limit = 100): Promise<Ride[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("rides")
-    .select("*")
+    .select("id, user_id, amount, payment_method, notes, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -122,7 +122,7 @@ export async function getExpenses(limit = 100): Promise<Expense[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("expenses")
-    .select("*")
+    .select("id, user_id, category, amount, notes, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
 

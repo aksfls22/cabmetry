@@ -17,7 +17,7 @@ export interface Ride {
 export interface Expense {
   id: string;
   user_id: string;
-  category: string;
+  category: ExpenseCategory;
   amount: number;
   notes: string | null;
   created_at: string;
@@ -58,3 +58,5 @@ export const EXPENSE_CATEGORIES = [
   "Comida",
   "Otros",
 ] as const;
+export type ExpenseCategory =
+  (typeof EXPENSE_CATEGORIES)[number];

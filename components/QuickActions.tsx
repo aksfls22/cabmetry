@@ -1,9 +1,48 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 import { es } from "@/lib/i18n/es";
 
 export function QuickActions() {
+  const router = useRouter();
+
+  const [kilometers, setKilometers] = useState("");
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSaveKilometers() {
+    try {
+      setIsSaving(true);
+
+      const response = await fetch("/api/daily-metrics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          kilometers: Number(kilometers),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save kilometers");
+      }
+
+      setKilometers("");
+
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+
+      alert("No se pudieron guardar los kilómetros.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <>
       {/* Floating Action Button */}
@@ -23,6 +62,41 @@ export function QuickActions() {
         <span className="text-4xl leading-none">+</span>
       </Link>
 
+      <div className="mb-4 rounded-2xl border border-surface-border bg-surface-raised/80 p-4 shadow-card">
+  <p className="mb-3 text-sm font-semibold text-zinc-200">
+    Kilómetros hoy
+  </p>
+
+  <div className="flex gap-2">
+    <input
+      type="number"
+      inputMode="decimal"
+      min="0"
+      placeholder="Ej: 180"
+      value={kilometers}
+      onChange={(e) => setKilometers(e.target.value)}
+      className="
+        flex-1 rounded-xl border border-surface-border
+        bg-zinc-900 px-4 py-3 text-zinc-100
+        outline-none transition-all
+        focus:border-yellow-400
+      "
+    />
+
+    <button
+      type="button"
+      onClick={handleSaveKilometers}
+      disabled={isSaving || !kilometers}
+      className="
+        rounded-xl bg-yellow-400 px-4 py-3
+        font-medium text-black transition-all
+        disabled:opacity-50
+      "
+    >
+      {isSaving ? "..." : "Guardar"}
+    </button>
+  </div>
+</div>
       {/* Secondary Action */}
       <div className="mb-6">
         <Link

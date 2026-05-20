@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTodayBoundsUTC } from "@/lib/datetime";
 
 export interface DashboardFinancialSummary {
   paidIncome: number;
@@ -11,20 +12,17 @@ export interface DashboardFinancialSummary {
 export async function getDashboardFinancialSummary(): Promise<DashboardFinancialSummary> {
   const supabase = createClient();
 
-  const today = new Date();
-
-  today.setHours(0, 0, 0, 0);
-
-  const todayIso = today.toISOString();
+  const { start, end } = getTodayBoundsUTC();
 
   // =========================
   // PAYMENTS
   // =========================
 
   const { data: payments, error: paymentsError } = await supabase
-    .from("payments")
-    .select("*")
-    .gte("created_at", todayIso);
+  .from("payments")
+  .select("amount, payment_status, created_at")
+  .gte("created_at", start)
+  .lt("created_at", end);
 
   if (paymentsError) {
     throw paymentsError;
@@ -35,14 +33,27 @@ export async function getDashboardFinancialSummary(): Promise<DashboardFinancial
   // =========================
 
   const { data: expenses, error: expensesError } = await supabase
-    .from("expenses")
-    .select("*")
-    .gte("created_at", todayIso);
+  .from("expenses")
+  .select("amount, created_at")
+  .gte("created_at", start)
+  .lt("created_at", end);
 
   if (expensesError) {
     throw expensesError;
   }
+// =========================
+// RIDES
+// =========================
 
+const { count: totalRides, error: ridesError } = await supabase
+  .from("rides")
+  .select("*", { count: "exact", head: true })
+  .gte("created_at", start)
+  .lt("created_at", end);
+
+if (ridesError) {
+  throw ridesError;
+}
   // =========================
   // CALCULATIONS
   // =========================
@@ -58,8 +69,7 @@ export async function getDashboardFinancialSummary(): Promise<DashboardFinancial
   const totalExpenses = (expenses ?? [])
   .reduce((sum, e) => sum + Number(e.amount ?? 0), 0);
 
-  const totalRides = (payments ?? []).length;
-
+ 
   const netProfit = paidIncome - totalExpenses;
 
   return {
@@ -67,6 +77,6 @@ export async function getDashboardFinancialSummary(): Promise<DashboardFinancial
     pendingIncome,
     totalExpenses,
     netProfit,
-    totalRides,
+    totalRides: totalRides ?? 0,
   };
 }
