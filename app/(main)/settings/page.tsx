@@ -12,8 +12,12 @@ async function saveProfile(formData: FormData) {
     formData.get("compensation_model") ?? "OWNER"
   );
 
-  const revenue_percentage =
+  let revenue_percentage = 1;
+
+if (compensation_model === "PERCENTAGE") {
+  revenue_percentage =
     Number(formData.get("revenue_percentage") ?? 100) / 100;
+}
 
   await updateProfile({
     currency,
