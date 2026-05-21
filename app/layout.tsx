@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import { ThemeScript } from "@/components/ThemeScript";
+import { Toaster } from "sonner";
 import { es } from "@/lib/i18n/es";
 
 import "./globals.css";
@@ -80,6 +81,8 @@ export default function RootLayout({
         <ThemeScript />
 
         {children}
+
+        <Toaster position="top-center" richColors />
 
       </body>
 

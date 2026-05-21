@@ -9,6 +9,7 @@ import { es } from "@/lib/i18n/es";
 import { getDashboardData } from "@/lib/queries";
 import { getTodayKilometers } from "@/lib/daily-metrics";
 import type { DashboardData } from "@/lib/types";
+import { getProfile } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,10 @@ export default async function DashboardPage() {
   let data = emptyDashboard;
   let error: string | null = null;
   let todayKilometers = 0;
+  const profile = await getProfile();
+
+const greetingName =
+  profile?.display_name?.trim() || "User";
 
   try {
     data = await getDashboardData();
@@ -40,7 +45,10 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={es.dashboard.today} subtitleSlot={<TodaySubtitle />} />
+      <PageHeader
+  title={`Hola, ${greetingName}`}
+  subtitleSlot={<TodaySubtitle />}
+/>
 
       {error ? (
         <div className="mb-6 rounded-2xl border border-expense/30 bg-expense/10 p-4 text-sm text-expense">

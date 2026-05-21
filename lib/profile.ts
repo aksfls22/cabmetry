@@ -34,10 +34,12 @@ export async function getProfile() {
 }
 
 export async function updateProfile({
-    currency,
-    compensation_model,
-    revenue_percentage,
+  display_name,
+  currency,
+  compensation_model,
+  revenue_percentage,
   }: {
+    display_name: string;
     currency: string;
     compensation_model: string;
     revenue_percentage: number;
@@ -63,6 +65,7 @@ export async function updateProfile({
     const { error } = await supabase
       .from("profiles")
       .update({
+        display_name,
         currency,
         compensation_model,
         revenue_percentage,
