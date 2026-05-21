@@ -1,10 +1,14 @@
 import { APP_LOCALE, APP_TIMEZONE } from "./datetime";
 import { type PaymentMethod } from "./types";
 
-export function formatCurrency(amount: number, locale = APP_LOCALE): string {
+export function formatCurrency(
+  amount: number,
+  currency = "EUR",
+  locale = APP_LOCALE
+): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "EUR",
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);

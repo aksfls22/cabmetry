@@ -40,16 +40,34 @@ export async function getTodayKilometers(): Promise<number> {
 
   const date = start.split("T")[0];
 
-  const { data, error } = await supabase
+  // First try today's value
+  const { data: todayData, error: todayError } = await supabase
     .from("daily_metrics")
     .select("kilometers")
     .eq("user_id", user.id)
     .eq("date", date)
     .maybeSingle();
 
-  if (error) {
-    throw error;
+  if (todayError) {
+    throw todayError;
   }
 
-  return Number(data?.kilometers ?? 0);
+  if (todayData?.kilometers != null) {
+    return Number(todayData.kilometers);
+  }
+
+  // Fallback to latest historical value
+  const { data: latestData, error: latestError } = await supabase
+    .from("daily_metrics")
+    .select("kilometers")
+    .eq("user_id", user.id)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestError) {
+    throw latestError;
+  }
+
+  return Number(latestData?.kilometers ?? 0);
 }
