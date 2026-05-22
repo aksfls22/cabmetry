@@ -1,30 +1,16 @@
 import { es } from "@/lib/i18n/es";
 import { formatCurrency } from "@/lib/utils";
-import type { DashboardInsights as Insights } from "@/lib/types";
+import type { LastActiveDayMetrics } from "@/lib/last-active-day";
 
 interface DashboardInsightsProps {
-  insights: Insights;
-  hasRides: boolean;
   todayKilometers: number;
-  totalIncome: number;
-  totalExpenses: number;
+  lastActiveDay: LastActiveDayMetrics;
 }
 
 export function DashboardInsights({
-  insights,
-  hasRides,
   todayKilometers,
-  totalIncome,
-  totalExpenses,
+  lastActiveDay,
 }: DashboardInsightsProps) {
-  const efficiency = todayKilometers > 0 && totalIncome > 0
-    ? totalIncome / todayKilometers
-    : 0;
-
-  const avgExpensePerRide = hasRides && insights.averageRideValue > 0
-    ? (totalExpenses / (totalIncome / insights.averageRideValue))
-    : 0;
-
   return (
     <section className="mb-8" aria-label={es.dashboard.analysisAria}>
       <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -38,15 +24,15 @@ export function DashboardInsights({
           icon="📍"
         />
         <InsightCard
-          label={es.dashboard.efficiency}
-          value={efficiency > 0 ? `${formatCurrency(efficiency)}${es.dashboard.efficiencyUnit}` : es.dashboard.noData}
-          muted={efficiency === 0}
-          icon="⚡"
+          label={es.dashboard.lastShift}
+          value={lastActiveDay.hasData ? es.dashboard.ridesCount(lastActiveDay.ridesCount) : es.dashboard.noData}
+          muted={!lastActiveDay.hasData}
+          icon="🚕"
         />
         <InsightCard
-          label={es.dashboard.avgPerRide}
-          value={hasRides ? formatCurrency(insights.averageRideValue) : es.dashboard.noData}
-          muted={!hasRides}
+          label={es.dashboard.lastShiftNet}
+          value={lastActiveDay.hasData ? formatCurrency(lastActiveDay.netIncome) : es.dashboard.noData}
+          muted={!lastActiveDay.hasData}
           icon="💰"
           className="col-span-2 md:col-span-1"
         />

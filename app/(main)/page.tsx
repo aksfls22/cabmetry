@@ -8,6 +8,7 @@ import { TodaySubtitle } from "@/components/TodaySubtitle";
 import { es } from "@/lib/i18n/es";
 import { getDashboardData } from "@/lib/queries";
 import { getTodayKilometers } from "@/lib/daily-metrics";
+import { getLastActiveDayMetrics } from "@/lib/last-active-day";
 import type { DashboardData } from "@/lib/types";
 import { getProfile } from "@/lib/profile";
 
@@ -27,6 +28,7 @@ export default async function DashboardPage() {
   let data = emptyDashboard;
   let error: string | null = null;
   let todayKilometers = 0;
+  let lastActiveDay = { ridesCount: 0, netIncome: 0, hasData: false };
   const profile = await getProfile();
 
 const greetingName =
@@ -35,6 +37,7 @@ const greetingName =
   try {
     data = await getDashboardData();
     todayKilometers = await getTodayKilometers();
+    lastActiveDay = await getLastActiveDayMetrics();
   } catch (e) {
     error =
       e instanceof Error ? e.message : es.dashboard.loadErrorGeneric;
@@ -107,11 +110,8 @@ const greetingName =
           </section>
 
           <DashboardInsights 
-            insights={data.insights} 
-            hasRides={hasRides}
             todayKilometers={todayKilometers}
-            totalIncome={data.paidIncome + data.pendingIncome}
-            totalExpenses={data.totalExpenses}
+            lastActiveDay={lastActiveDay}
           />
 
           <QuickActions />

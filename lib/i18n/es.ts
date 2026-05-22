@@ -4,10 +4,12 @@ export const es = {
 
   nav: {
     home: "Inicio",
-    newRide: "Carrera",
-    newExpense: "Gasto",
+    dashboard: "Dashboard",
+    activity: "Actividad",
     rides: "Carreras",
     expenses: "Gastos",
+    newRide: "Carrera",
+    newExpense: "Gasto",
     mainAria: "Navegación principal",
   },
 
@@ -53,10 +55,13 @@ export const es = {
     analysis: "Métricas operacionales",
     analysisAria: "Métricas operacionales",
     lastKilometers: "Último kilometraje",
+    lastShift: "Última jornada",
+    lastShiftNet: "Neto última jornada",
     efficiency: "Eficiencia",
     efficiencyUnit: "/km",
     topPaymentMethod: "Cobro más habitual",
     avgPerRide: "Media por carrera",
+    ridesCount: (n: number) => `${n} ${n === 1 ? "carrera" : "carreras"}`,
     noData: "Sin datos",
     newRide: "Nueva carrera",
     newExpense: "Nuevo gasto",
