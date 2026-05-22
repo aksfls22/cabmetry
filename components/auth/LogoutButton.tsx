@@ -13,9 +13,12 @@ export function LogoutButton({ className }: { className?: string }) {
   async function handleLogout() {
     setLoading(true);
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    const { error } = await supabase.auth.signOut();
+
+    if (!error) {
+      router.replace("/login");
+      router.refresh();
+    }
   }
 
   return (

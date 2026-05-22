@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -8,6 +9,7 @@ import { formatCurrency, paymentLabel } from "@/lib/utils";
 import type { Expense, Ride } from "@/lib/types";
 import { es } from "@/lib/i18n/es";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface RideHistoryProps {
   rides: Ride[];
@@ -22,16 +24,34 @@ export function RideHistoryList({ rides }: RideHistoryProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
-    if (!confirm(es.rides.deleteConfirm)) return;
+    
     setDeletingId(id);
     const supabase = createClient();
-    await supabase.from("rides").delete().eq("id", id);
-    setDeletingId(null);
-    router.refresh();
+    const { error } = await supabase
+  .from("rides")
+  .delete()
+  .eq("id", id);
+
+setDeletingId(null);
+
+if (error) {
+  toast.error("No pudimos eliminar la carrera.");
+  return;
+}
+
+toast.success("Carrera eliminada.");
+
+router.refresh();
   }
 
   if (rides.length === 0) {
-    return <EmptyState message={es.rides.empty} />;
+    return (
+      <EmptyState
+        message={es.rides.empty}
+        href="/"
+        actionLabel="Registrar primera carrera"
+      />
+    );
   }
 
   return (
@@ -76,16 +96,34 @@ export function ExpenseHistoryList({ expenses }: ExpenseHistoryProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
-    if (!confirm(es.expenses.deleteConfirm)) return;
+   
     setDeletingId(id);
     const supabase = createClient();
-    await supabase.from("expenses").delete().eq("id", id);
-    setDeletingId(null);
-    router.refresh();
+    const { error } = await supabase
+  .from("expenses")
+  .delete()
+  .eq("id", id);
+
+setDeletingId(null);
+
+if (error) {
+  toast.error("No pudimos eliminar el gasto.");
+  return;
+}
+
+toast.success("Gasto eliminado.");
+
+router.refresh();
   }
 
   if (expenses.length === 0) {
-    return <EmptyState message={es.expenses.empty} />;
+    return (
+      <EmptyState
+        message={es.expenses.empty}
+        href="/expenses/new"
+        actionLabel="Registrar primer gasto"
+      />
+    );
   }
 
   return (
@@ -125,14 +163,25 @@ export function ExpenseHistoryList({ expenses }: ExpenseHistoryProps) {
   );
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({
+  message,
+  href,
+  actionLabel,
+}: {
+  message: string;
+  href: string;
+  actionLabel: string;
+}) {
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-dashed border-surface-border py-16 text-center"
-      )}
-    >
+    <div className="rounded-2xl border border-dashed border-surface-border py-16 text-center">
       <p className="text-zinc-500">{message}</p>
+
+      <Link
+        href={href}
+        className="mt-4 inline-flex text-sm font-medium text-accent hover:text-accent/90"
+      >
+        {actionLabel}
+      </Link>
     </div>
   );
 }

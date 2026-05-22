@@ -64,6 +64,14 @@ export function LoginForm() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+      <div className="flex justify-end">
+  <Link
+    href="/forgot-password"
+    className="text-sm text-zinc-500 transition-colors hover:text-accent"
+  >
+    ¿Olvidaste tu contraseña?
+  </Link>
+</div>
 
       {error && (
         <p

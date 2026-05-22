@@ -15,12 +15,21 @@ export function RecentRidesSection({ rides }: RecentRidesSectionProps) {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
           {es.dashboard.recentRides}
         </h2>
-        <Link
-          href="/rides/history"
-          className="text-xs font-medium text-accent hover:text-accent/90"
-        >
-          {es.dashboard.seeAll}
-        </Link>
+        {rides.length > 0 ? (
+  <Link
+    href="/rides/history"
+    className="text-xs font-medium text-accent hover:text-accent/90"
+  >
+    {es.dashboard.seeAll}
+  </Link>
+) : (
+  <Link
+    href="/rides/new"
+    className="text-xs font-medium text-accent hover:text-accent/90"
+  >
+    Añadir primera carrera
+  </Link>
+)}
       </div>
 
       {rides.length === 0 ? (

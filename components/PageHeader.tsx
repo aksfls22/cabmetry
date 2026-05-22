@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface PageHeaderProps {
   title: string;
@@ -70,11 +71,9 @@ export function PageHeader({
                 Reportes
               </Link>
 
-              <button
-                className="flex w-full items-center rounded-xl px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
-              >
-                Cerrar sesión
-              </button>
+              <LogoutButton
+  className="flex w-full items-center rounded-xl px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+/>
             </div>
           </div>
         )}

@@ -3,9 +3,16 @@ import { getProfile } from "@/lib/profile";
 import { updateProfile } from "@/lib/profile";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { SettingsToast } from "@/components/SettingsToast";
 
+
 export default async function SettingsPage() {
+  const supabase = await createClient();
+
+const {
+  data: { user },
+} = await supabase.auth.getUser();
   const profile = await getProfile();
 
   async function saveProfile(formData: FormData) {
@@ -84,18 +91,7 @@ export default async function SettingsPage() {
                 />
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-white">
-                  Correo electrónico
-                </label>
-
-                <input
-                  type="email"
-                  value="usuario@email.com"
-                  disabled
-                  className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-500 outline-none"
-                />
-              </div>
+              
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-white">
@@ -210,26 +206,29 @@ export default async function SettingsPage() {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-white">
-                Correo electrónico
-              </label>
+          <div>
+  <label className="mb-1 block text-sm font-medium text-white">
+    Correo electrónico
+  </label>
 
-              <input
-                type="email"
-                value="usuario@email.com"
-                disabled
-                className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-500 outline-none"
-              />
-            </div>
+  <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+    <p className="text-sm text-zinc-400">
+    {user?.email ?? "Sin correo"}
+    </p>
+  </div>
 
-            <button className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm font-medium text-white transition-colors hover:border-zinc-700 hover:bg-zinc-950">
-              Cambiar contraseña
-            </button>
+  <p className="mt-2 text-xs text-zinc-500">
+    Gestionado de forma segura mediante tu cuenta.
+  </p>
+</div>
 
-            <button className="w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20">
-              Cerrar sesión
-            </button>
+<a
+  href="/forgot-password"
+  className="block w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:border-zinc-700 hover:bg-zinc-950"
+>
+  Cambiar contraseña
+</a>
+           
           </div>
         </section>
       </div>
