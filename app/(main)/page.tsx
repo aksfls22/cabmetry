@@ -1,4 +1,4 @@
-import { DashboardHistoryLinks } from "@/components/DashboardHistoryLinks";
+
 import { DashboardInsights } from "@/components/DashboardInsights";
 import { PageHeader } from "@/components/PageHeader";
 import { QuickActions } from "@/components/QuickActions";
@@ -120,7 +120,7 @@ const greetingName =
         </>
       )}
 
-      <DashboardHistoryLinks />
+     
     </>
   );
 }
