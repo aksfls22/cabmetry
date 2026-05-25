@@ -1,61 +1,51 @@
 import { PageHeader } from "@/components/PageHeader";
-import { getRides, getExpenses } from "@/lib/queries";
-import { formatCurrency } from "@/lib/utils";
-import { FormattedDateTime } from "@/components/FormattedDateTime";
-import { CarTaxiFront, WalletCards } from "lucide-react";
+import { OperationalCalendar } from "@/components/OperationalCalendar";
+import { getMonthSummary } from "@/lib/calendar-summary";
+import { APP_TIMEZONE } from "@/lib/datetime";
 
-type ActivityItem = {
-  id: string;
-  type: "ride" | "expense";
-  amount: number;
-  description: string;
-  timestamp: string;
-};
+interface ActivityPageProps {
+  searchParams: { year?: string; month?: string };
+}
 
-const ACTIVITY_LIMIT = 20;
+export default async function ActivityPage({ searchParams }: ActivityPageProps) {
+  // Get current month in app timezone as default
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+  });
 
-export default async function ActivityPage() {
-  let activityItems: ActivityItem[] = [];
+  const parts = formatter.formatToParts(now);
+  const currentYear = Number(parts.find((p) => p.type === "year")?.value);
+  const currentMonth = Number(parts.find((p) => p.type === "month")?.value);
+
+  // Use query params if provided, otherwise use current month
+  const year = searchParams.year ? Number(searchParams.year) : currentYear;
+  const month = searchParams.month ? Number(searchParams.month) : currentMonth;
+
+  // Validate year and month
+  const isValidYear = year >= 2020 && year <= 2100;
+  const isValidMonth = month >= 1 && month <= 12;
+
+  let monthSummary;
   let error: string | null = null;
 
-  try {
-    // Fetch recent rides and expenses
-    const [rides, expenses] = await Promise.all([
-      getRides(ACTIVITY_LIMIT),
-      getExpenses(ACTIVITY_LIMIT),
-    ]);
-
-    // Map rides to activity items
-    const rideItems: ActivityItem[] = rides.map((ride) => ({
-      id: ride.id,
-      type: "ride" as const,
-      amount: ride.amount,
-      description: ride.payment_method,
-      timestamp: ride.created_at,
-    }));
-
-    // Map expenses to activity items
-    const expenseItems: ActivityItem[] = expenses.map((expense) => ({
-      id: expense.id,
-      type: "expense" as const,
-      amount: expense.amount,
-      description: expense.category,
-      timestamp: expense.created_at,
-    }));
-
-    // Merge and sort by timestamp (most recent first)
-    activityItems = [...rideItems, ...expenseItems]
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, ACTIVITY_LIMIT);
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Error al cargar la actividad";
+  if (!isValidYear || !isValidMonth) {
+    error = "Fecha inválida";
+  } else {
+    try {
+      monthSummary = await getMonthSummary(year, month);
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Error al cargar el calendario";
+    }
   }
 
   return (
     <>
       <PageHeader
         title="Actividad"
-        subtitle="Historial completo de carreras y gastos"
+        subtitle="Calendario operacional mensual"
       />
 
       {error ? (
@@ -63,62 +53,13 @@ export default async function ActivityPage() {
           <p className="font-medium">Error al cargar</p>
           <p className="mt-1 text-expense/80">{error}</p>
         </div>
-      ) : activityItems.length === 0 ? (
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <div className="text-center">
-            <p className="text-sm text-zinc-500">No hay actividad registrada</p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {activityItems.map((item) => (
-            <ActivityCard key={`${item.type}-${item.id}`} item={item} />
-          ))}
-        </div>
-      )}
+      ) : monthSummary ? (
+        <OperationalCalendar
+          initialYear={monthSummary.year}
+          initialMonth={monthSummary.month}
+          days={monthSummary.days}
+        />
+      ) : null}
     </>
-  );
-}
-
-function ActivityCard({ item }: { item: ActivityItem }) {
-  const isRide = item.type === "ride";
-
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised/80 p-4">
-      {/* Icon */}
-      <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          isRide ? "bg-profit/10 text-profit" : "bg-expense/10 text-expense"
-        }`}
-      >
-        {isRide ? (
-          <CarTaxiFront className="h-5 w-5" strokeWidth={2} />
-        ) : (
-          <WalletCards className="h-5 w-5" strokeWidth={2} />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-300 capitalize">
-          {item.description}
-        </p>
-        <p className="text-xs text-zinc-500">
-          <FormattedDateTime iso={item.timestamp} />
-        </p>
-      </div>
-
-      {/* Amount */}
-      <div className="text-right">
-        <p
-          className={`text-base font-bold tabular-nums ${
-            isRide ? "text-profit" : "text-expense"
-          }`}
-        >
-          {isRide ? "+" : "-"}
-          {formatCurrency(item.amount)}
-        </p>
-      </div>
-    </div>
   );
 }
