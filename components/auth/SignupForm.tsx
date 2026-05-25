@@ -13,6 +13,7 @@ export function SignupForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [betaCode, setBetaCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -28,6 +29,28 @@ export function SignupForm() {
     }
 
     setLoading(true);
+
+    // Validate beta code server-side BEFORE signup
+    try {
+      const response = await fetch("/api/validate-beta-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: betaCode.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!data.valid) {
+        setLoading(false);
+        setError("Código beta inválido");
+        return;
+      }
+    } catch (err) {
+      setLoading(false);
+      setError("Error al validar código beta");
+      return;
+    }
+
     const supabase = createClient();
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
@@ -58,6 +81,20 @@ export function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <p className="text-xs text-center text-zinc-500 -mt-2 mb-4">
+        Beta privada para conductores invitados
+      </p>
+
+      <Input
+        label="Código beta"
+        type="text"
+        autoComplete="off"
+        placeholder="Introduce tu código de acceso"
+        required
+        value={betaCode}
+        onChange={(e) => setBetaCode(e.target.value)}
+      />
+
       <Input
         label={es.auth.email}
         type="email"
