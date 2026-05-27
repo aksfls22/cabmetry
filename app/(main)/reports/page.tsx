@@ -1,6 +1,7 @@
 import { ReportRangeTabs } from "@/components/reports/ReportRangeTabs";
 import { ReportFinancialSummary } from "@/components/reports/ReportFinancialSummary";
 import { ReportOperationalSummary } from "@/components/reports/ReportOperationalSummary";
+import { ExportButton } from "@/components/reports/ExportButton";
 import { getReportData, type ReportPeriod } from "@/lib/reports";
 import { requireUser } from "@/lib/auth";
 
@@ -43,6 +44,11 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <h1 className="text-2xl font-bold text-white">Informes</h1>
         <p className="mt-1 text-sm text-zinc-400">Resumen operacional y financiero</p>
       </header>
+
+      {/* Export Actions */}
+      <div className="flex justify-end">
+        <ExportButton data={data} period={validPeriod} />
+      </div>
 
       {/* Period Selector */}
       <ReportRangeTabs />
