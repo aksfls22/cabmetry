@@ -24,25 +24,51 @@ export function LoginForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+  
     setError(null);
     setLoading(true);
-
+  
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
+  
+    const { error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+  
     setLoading(false);
-
+  
     if (signInError) {
       setError(translateAuthError(signInError.message));
       return;
     }
-
+  
     router.push(redirect);
     router.refresh();
   }
+  
+  async function handleGoogleLogin() {
+    setError(null);
+  
+    const supabase = createClient();
+  
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+  
+    if (error) {
+      setError(translateAuthError(error.message));
+      return;
+    }
+  
+    if (data.url) {
+      window.location.href = data.url;
+    }
+  }
+  
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -81,6 +107,26 @@ export function LoginForm() {
           {error}
         </p>
       )}
+<div className="relative">
+  <div className="absolute inset-0 flex items-center">
+    <span className="w-full border-t border-zinc-800" />
+  </div>
+
+  <div className="relative flex justify-center text-xs uppercase">
+    <span className="bg-background px-3 text-zinc-500">
+      O continuar con
+    </span>
+  </div>
+</div>
+
+<Button
+  type="button"
+  variant="secondary"
+  onClick={handleGoogleLogin}
+  className="w-full"
+>
+  Continuar con Google
+</Button>
 
       <Button type="submit" disabled={loading}>
         {loading ? es.auth.signingIn : es.auth.signIn}

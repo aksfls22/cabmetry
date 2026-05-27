@@ -40,11 +40,19 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isAuthRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/signup");
+  pathname.startsWith("/login") ||
+  pathname.startsWith("/signup") ||
+  pathname.startsWith("/forgot-password") ||
+  pathname.startsWith("/reset-password") ||
+  pathname.startsWith("/auth");
+  const isCompleteProfileRoute = pathname === "/complete-profile";
   const isProtected =
     pathname === "/" ||
     pathname.startsWith("/rides") ||
-    pathname.startsWith("/expenses");
+    pathname.startsWith("/expenses") ||
+    pathname.startsWith("/reports") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/activity");
 
   if (!user && isProtected) {
     const redirectUrl = request.nextUrl.clone();
@@ -58,6 +66,22 @@ export async function updateSession(request: NextRequest) {
     home.pathname = "/";
     home.search = "";
     return NextResponse.redirect(home);
+  }
+
+  // Check if authenticated user needs to complete profile
+  if (user && !isCompleteProfileRoute && !isAuthRoute) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile && !profile.display_name) {
+      const completeProfileUrl = request.nextUrl.clone();
+      completeProfileUrl.pathname = "/complete-profile";
+      completeProfileUrl.search = "";
+      return NextResponse.redirect(completeProfileUrl);
+    }
   }
 
   return supabaseResponse;
