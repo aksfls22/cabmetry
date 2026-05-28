@@ -50,13 +50,13 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
 
   return (
     <div className="print-page min-h-screen bg-white">
-      {/* Print Button - Hidden on print */}
-      <div className="no-print fixed right-8 top-8 z-10">
+      {/* Print Button - Desktop: top-right, Mobile: below content */}
+      <div className="no-print fixed right-8 top-8 z-10 hidden md:block">
         <PrintButton />
       </div>
 
       {/* Document Container - True A4/Letter proportions */}
-      <div className="mx-auto max-w-[850px] px-12 py-16 md:px-16 md:py-20">
+      <div className="mx-auto max-w-[850px] px-8 py-12 md:px-16 md:py-20">
         
         {/* Header - Editorial Style */}
         <header className="mb-16 text-center">
@@ -183,6 +183,11 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
             <div className="text-zinc-300">{generatedDate} • {APP_TIMEZONE}</div>
           </div>
         </footer>
+
+        {/* Mobile Print Button - Below content */}
+        <div className="no-print mt-12 flex justify-center md:hidden">
+          <PrintButton />
+        </div>
       </div>
     </div>
   );
