@@ -2,28 +2,38 @@ import { ReportRangeTabs } from "@/components/reports/ReportRangeTabs";
 import { ReportFinancialSummary } from "@/components/reports/ReportFinancialSummary";
 import { ReportOperationalSummary } from "@/components/reports/ReportOperationalSummary";
 import { ExportButton } from "@/components/reports/ExportButton";
+import { GenerateReportButton } from "@/components/reports/GenerateReportButton";
 import { getReportData, type ReportPeriod } from "@/lib/reports";
 import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 interface ReportsPageProps {
-  searchParams: { period?: string };
+  searchParams: { 
+    period?: string;
+    type?: string;
+    offset?: string;
+  };
 }
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   await requireUser();
 
-  // Get period from URL, default to "hoy"
-  const period = (searchParams.period as ReportPeriod) ?? "hoy";
-  
-  // Validate period
-  const validPeriod: ReportPeriod = ["hoy", "semana", "mes"].includes(period)
-    ? period
-    : "hoy";
+  // Get period type and offset from URL
+  const periodType = searchParams.type ?? "dia";
+  const offset = parseInt(searchParams.offset ?? "0");
 
-  // Fetch real data
-  const data = await getReportData(validPeriod);
+  // Map period type to ReportPeriod for getReportData
+  const periodMap: Record<string, ReportPeriod> = {
+    dia: "hoy",
+    semana: "semana",
+    mes: "mes",
+  };
+  
+  const validPeriod: ReportPeriod = periodMap[periodType] ?? "hoy";
+
+  // Fetch real data with offset support for historical periods
+  const data = await getReportData(validPeriod, offset);
 
   // Calculate efficiency (€/km)
   const euroPorKm = data.totalKilometers > 0 
@@ -46,7 +56,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       </header>
 
       {/* Export Actions */}
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <GenerateReportButton type={periodType} offset={offset} />
         <ExportButton data={data} period={validPeriod} />
       </div>
 

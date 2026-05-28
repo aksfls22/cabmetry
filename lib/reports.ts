@@ -20,10 +20,13 @@ export interface ReportData {
 }
 
 /**
- * Get timezone-safe bounds for a report period.
+ * Get timezone-safe bounds for a report period with offset support.
  * Reuses datetime.ts patterns for consistency.
+ * 
+ * @param period - The period type (hoy, semana, mes)
+ * @param offset - Number of periods to offset (0 = current, -1 = previous, etc.)
  */
-function getPeriodBoundsUTC(period: ReportPeriod): { start: string; end: string } {
+function getPeriodBoundsUTC(period: ReportPeriod, offset: number = 0): { start: string; end: string } {
   const now = new Date();
 
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -42,17 +45,21 @@ function getPeriodBoundsUTC(period: ReportPeriod): { start: string; end: string 
   let localEnd: string;
 
   if (period === "hoy") {
-    // Today: 00:00:00 → next day 00:00:00
-    localStart = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00`;
-    localEnd = `${year}-${String(month).padStart(2, "0")}-${String(day + 1).padStart(2, "0")}T00:00:00`;
+    // Day with offset: apply offset to current day
+    const targetDate = new Date(year, month - 1, day + offset);
+    const nextDate = new Date(year, month - 1, day + offset + 1);
+    
+    localStart = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}-${String(targetDate.getDate()).padStart(2, "0")}T00:00:00`;
+    localEnd = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}-${String(nextDate.getDate()).padStart(2, "0")}T00:00:00`;
   } else if (period === "semana") {
-    // Current week: Monday → Sunday (inclusive)
+    // Week with offset: apply offset in weeks
     const currentDate = new Date(year, month - 1, day);
     const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, ...
-    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     
+    // Get Monday of current week, then apply week offset
     const monday = new Date(currentDate);
-    monday.setDate(currentDate.getDate() + daysToMonday);
+    monday.setDate(currentDate.getDate() + daysToMonday + (offset * 7));
     
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
@@ -63,10 +70,15 @@ function getPeriodBoundsUTC(period: ReportPeriod): { start: string; end: string 
     localStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}T00:00:00`;
     localEnd = `${nextMonday.getFullYear()}-${String(nextMonday.getMonth() + 1).padStart(2, "0")}-${String(nextMonday.getDate()).padStart(2, "0")}T00:00:00`;
   } else {
-    // Current month: 1st → next month 1st
-    localStart = `${year}-${String(month).padStart(2, "0")}-01T00:00:00`;
-    const nextMonth = month === 12 ? 1 : month + 1;
-    const nextYear = month === 12 ? year + 1 : year;
+    // Month with offset: apply offset in months
+    const targetMonth = month + offset;
+    const targetYear = year + Math.floor((targetMonth - 1) / 12);
+    const normalizedMonth = ((targetMonth - 1) % 12) + 1;
+    
+    localStart = `${targetYear}-${String(normalizedMonth).padStart(2, "0")}-01T00:00:00`;
+    
+    const nextMonth = normalizedMonth === 12 ? 1 : normalizedMonth + 1;
+    const nextYear = normalizedMonth === 12 ? targetYear + 1 : targetYear;
     localEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00`;
   }
 
@@ -80,57 +92,55 @@ function getPeriodBoundsUTC(period: ReportPeriod): { start: string; end: string 
 }
 
 /**
- * Generate human-readable period label in Spanish.
+ * Generate human-readable period label in Spanish with offset support.
+ * 
+ * @param period - The period type (hoy, semana, mes)
+ * @param offset - Number of periods to offset (0 = current, -1 = previous, etc.)
  */
-function getPeriodLabel(period: ReportPeriod): string {
+function getPeriodLabel(period: ReportPeriod, offset: number = 0): string {
   const now = new Date();
   
-  const formatter = new Intl.DateTimeFormat("es-ES", {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   });
 
-  if (period === "hoy") {
-    // e.g., "Sábado 23 mayo 2026"
-    const dayName = new Intl.DateTimeFormat("es-ES", {
-      timeZone: APP_TIMEZONE,
-      weekday: "long",
-    }).format(now);
-    
-    const day = new Intl.DateTimeFormat("es-ES", {
-      timeZone: APP_TIMEZONE,
-      day: "numeric",
-    }).format(now);
-    
-    const month = new Intl.DateTimeFormat("es-ES", {
-      timeZone: APP_TIMEZONE,
-      month: "long",
-    }).format(now);
-    
-    const year = new Intl.DateTimeFormat("es-ES", {
-      timeZone: APP_TIMEZONE,
-      year: "numeric",
-    }).format(now);
+  const parts = formatter.formatToParts(now);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  const day = Number(parts.find((p) => p.type === "day")?.value);
 
-    return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${day} ${month} ${year}`;
-  } else if (period === "semana") {
-    // e.g., "20 mayo → 26 mayo"
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: APP_TIMEZONE,
+  if (period === "hoy") {
+    // Day with offset
+    const targetDate = new Date(year, month - 1, day + offset);
+    
+    const dayName = new Intl.DateTimeFormat("es-ES", {
+      weekday: "long",
+    }).format(targetDate);
+    
+    const targetDay = new Intl.DateTimeFormat("es-ES", {
+      day: "numeric",
+    }).format(targetDate);
+    
+    const targetMonth = new Intl.DateTimeFormat("es-ES", {
+      month: "long",
+    }).format(targetDate);
+    
+    const targetYear = new Intl.DateTimeFormat("es-ES", {
       year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(now);
-    
-    const year = Number(parts.find((p) => p.type === "year")?.value);
-    const month = Number(parts.find((p) => p.type === "month")?.value);
-    const day = Number(parts.find((p) => p.type === "day")?.value);
-    
+    }).format(targetDate);
+
+    return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${targetDay} ${targetMonth} ${targetYear}`;
+  } else if (period === "semana") {
+    // Week with offset
     const currentDate = new Date(year, month - 1, day);
     const dayOfWeek = currentDate.getDay();
     const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     
     const monday = new Date(currentDate);
-    monday.setDate(currentDate.getDate() + daysToMonday);
+    monday.setDate(currentDate.getDate() + daysToMonday + (offset * 7));
     
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
@@ -151,28 +161,35 @@ function getPeriodLabel(period: ReportPeriod): string {
       return `${mondayDay} ${mondayMonth} → ${sundayDay} ${sundayMonth}`;
     }
   } else {
-    // e.g., "Mayo 2026"
-    const month = new Intl.DateTimeFormat("es-ES", {
-      timeZone: APP_TIMEZONE,
-      month: "long",
-    }).format(now);
+    // Month with offset
+    const targetMonth = month + offset;
+    const targetYear = year + Math.floor((targetMonth - 1) / 12);
+    const normalizedMonth = ((targetMonth - 1) % 12) + 1;
     
-    const year = new Intl.DateTimeFormat("es-ES", {
-      timeZone: APP_TIMEZONE,
+    const targetDate = new Date(targetYear, normalizedMonth - 1, 1);
+    
+    const monthName = new Intl.DateTimeFormat("es-ES", {
+      month: "long",
+    }).format(targetDate);
+    
+    const yearName = new Intl.DateTimeFormat("es-ES", {
       year: "numeric",
-    }).format(now);
+    }).format(targetDate);
 
-    return `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
+    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${yearName}`;
   }
 }
 
 /**
- * Get report data for a specific period.
+ * Get report data for a specific period with offset support.
  * Reuses financial.ts patterns for consistency with dashboard.
+ * 
+ * @param period - The period type (hoy, semana, mes)
+ * @param offset - Number of periods to offset (0 = current, -1 = previous, etc.)
  */
-export async function getReportData(period: ReportPeriod): Promise<ReportData> {
+export async function getReportData(period: ReportPeriod, offset: number = 0): Promise<ReportData> {
   const supabase = createClient();
-  const { start, end } = getPeriodBoundsUTC(period);
+  const { start, end } = getPeriodBoundsUTC(period, offset);
 
   // =========================
   // PAYMENTS (Income)
@@ -266,6 +283,6 @@ export async function getReportData(period: ReportPeriod): Promise<ReportData> {
     netProfit,
     totalRides: totalRides ?? 0,
     totalKilometers,
-    periodLabel: getPeriodLabel(period),
+    periodLabel: getPeriodLabel(period, offset),
   };
 }

@@ -49,3 +49,39 @@
     @apply min-h-[52px] min-w-[52px];
   }
 }
+
+/* Print styles for reports */
+@media print {
+  body {
+    background: white !important;
+  }
+  
+  /* Hide all app chrome during print */
+  .no-print,
+  nav,
+  header:has(button),
+  [role="navigation"],
+  button[aria-label*="theme"],
+  button[aria-label*="logout"],
+  aside,
+  .bottom-nav {
+    display: none !important;
+  }
+  
+  .print-page {
+    max-width: 100% !important;
+    padding: 1.5rem !important;
+    margin: 0 !important;
+  }
+  
+  /* Ensure clean page breaks */
+  section {
+    page-break-inside: avoid;
+  }
+  
+  /* Remove shadows and optimize for print */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}
