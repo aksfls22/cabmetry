@@ -107,16 +107,14 @@ export function LoginForm() {
           {error}
         </p>
       )}
-<div className="relative">
-  <div className="absolute inset-0 flex items-center">
-    <span className="w-full border-t border-zinc-800" />
-  </div>
+<div className="flex items-center gap-3">
+  <div className="h-px flex-1 bg-zinc-800" />
 
-  <div className="relative flex justify-center text-xs uppercase">
-    <span className="bg-background px-3 text-zinc-500">
-      O continuar con
-    </span>
-  </div>
+  <span className="text-xs uppercase tracking-wider text-zinc-500 whitespace-nowrap">
+    O continuar con
+  </span>
+
+  <div className="h-px flex-1 bg-zinc-800" />
 </div>
 
 <Button

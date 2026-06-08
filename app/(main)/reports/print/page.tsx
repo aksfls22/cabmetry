@@ -49,21 +49,21 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
   }).format(now);
 
   return (
-    <div className="print-page min-h-screen bg-white">
+    <div className="print-page bg-white">
       {/* Print Button - Desktop: top-right, Mobile: below content */}
       <div className="no-print fixed right-8 top-8 z-10 hidden md:block">
         <PrintButton />
       </div>
 
       {/* Document Container - True A4/Letter proportions */}
-      <div className="mx-auto max-w-[850px] px-8 py-12 md:px-16 md:py-20">
+      <div className="mx-auto max-w-[850px] px-8 py-8 md:px-16 md:py-10">
         
         {/* Header - Editorial Style */}
-        <header className="mb-16 text-center">
+        <header className="mb-6 text-center">
           <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
             Capmetry
           </div>
-          <h1 className="mb-8 text-4xl font-light tracking-tight text-zinc-900">
+          <h1 className="mb-4 text-3xl font-light tracking-tight text-zinc-900">
             Informe Operacional
           </h1>
           <div className="flex items-center justify-center gap-4 text-sm text-zinc-500">
@@ -74,11 +74,11 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
         </header>
 
         {/* Main KPI - Centered, Minimal */}
-        <section className="mb-20 text-center">
+        <section className="mb-10 text-center">
           <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
             Ingresos Cobrados
           </div>
-          <div className="mb-6 text-6xl font-light tracking-tight text-zinc-900">
+          <div className="mb-4 text-5xl font-light tracking-tight text-zinc-900">
             {formatCurrency(data.paidIncome)}
           </div>
           <div className="text-sm text-zinc-500">
@@ -90,14 +90,15 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
         </section>
 
         {/* Divider */}
-        <div className="mb-16 border-t border-zinc-100"></div>
+        <div className="mb-8 border-t border-zinc-100"></div>
 
-        {/* Financial Summary - Aligned Rows */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-            Resumen Financiero
-          </h2>
-          <div className="space-y-4">
+       {/* Financial Summary - Aligned Rows */}
+<section className="mb-10">
+  <h2 className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+    Resumen Financiero
+  </h2>
+
+  <div className="space-y-2">
             <div className="flex items-center justify-between border-b border-zinc-50 pb-4">
               <span className="text-sm text-zinc-600">Pendiente de cobro</span>
               <span className="text-lg font-semibold text-zinc-900">
@@ -120,14 +121,14 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
         </section>
 
         {/* Divider */}
-        <div className="mb-16 border-t border-zinc-100"></div>
+        <div className="mb-6 border-t border-zinc-100"></div>
 
         {/* Operational Metrics - Aligned Rows */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+        <section className="mb-4">
+          <h2 className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
             Métricas Operacionales
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div className="flex items-center justify-between border-b border-zinc-50 pb-4">
               <span className="text-sm text-zinc-600">Carreras</span>
               <span className="text-lg font-semibold text-zinc-900">
@@ -150,39 +151,11 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
         </section>
 
         {/* Divider */}
-        <div className="mb-16 border-t border-zinc-100"></div>
+        <div className="mb-2 border-t border-zinc-100"></div>
 
-        {/* Notes - Minimal */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-            Notas Operacionales
-          </h2>
-          <div className="space-y-3 text-sm leading-relaxed text-zinc-600">
-            <p>
-              {data.totalRides > 0 
-                ? `Promedio de ${formatCurrency(data.paidIncome / data.totalRides)} por carrera.`
-                : 'No hay carreras registradas en este período.'}
-            </p>
-            <p>
-              {data.totalKilometers > 0 && data.totalRides > 0
-                ? `Distancia promedio de ${(data.totalKilometers / data.totalRides).toFixed(1)} km por carrera.`
-                : 'Registra kilómetros diarios para obtener métricas de eficiencia.'}
-            </p>
-            <p>
-              {data.pendingIncome > 0
-                ? `${formatCurrency(data.pendingIncome)} pendiente de cobro (${((data.pendingIncome / (data.paidIncome + data.pendingIncome)) * 100).toFixed(0)}% del total).`
-                : 'Todos los ingresos han sido cobrados.'}
-            </p>
-          </div>
-        </section>
+                     {/* Report ends after operational metrics */}
 
-        {/* Footer - Centered, Subtle */}
-        <footer className="border-t border-zinc-100 pt-12 text-center">
-          <div className="text-xs text-zinc-400">
-            <div className="mb-1">Generado por Capmetry</div>
-            <div className="text-zinc-300">{generatedDate} • {APP_TIMEZONE}</div>
-          </div>
-        </footer>
+        
 
         {/* Mobile Print Button - Below content */}
         <div className="no-print mt-12 flex justify-center md:hidden">

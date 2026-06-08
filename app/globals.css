@@ -51,9 +51,22 @@
 }
 
 /* Print styles for reports */
+@page {
+  size: A4;
+  margin: 8mm;
+}
+
 @media print {
   body {
     background: white !important;
+  }
+  footer {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+  
+  .print-page {
+    page-break-after: auto !important;
   }
   
   /* Hide all app chrome during print */
@@ -76,12 +89,21 @@
   
   /* Ensure clean page breaks */
   section {
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
   }
   
   /* Remove shadows and optimize for print */
   * {
     box-shadow: none !important;
     text-shadow: none !important;
+  }
+  footer {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+  
+  .print-page {
+    page-break-after: auto !important;
   }
 }
