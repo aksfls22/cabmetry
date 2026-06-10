@@ -1,8 +1,13 @@
 import { getProfile, updateProfile } from "@/lib/profile";
+import { requireUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { 
+  validateActivationCodeWithFallback, 
+  getActivationErrorMessage 
+} from "@/lib/access-codes";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +33,20 @@ export default async function CompleteProfilePage({
       redirect("/complete-profile?error=required");
     }
 
-    // Validate beta code using existing API logic
-    const validBetaCode = process.env.BETA_CODE;
+    // Get current user for validation
+    const user = await requireUser();
 
-    if (!validBetaCode || betaCode !== validBetaCode) {
-      redirect("/complete-profile?error=invalid_beta");
+    // Validate activation code using centralized validation layer
+    // This supports both database codes and BETA_CODE env var fallback
+    const validationResult = await validateActivationCodeWithFallback(
+      betaCode,
+      user.id
+    );
+
+    if (!validationResult.valid) {
+      // Map validation errors to URL params
+      const errorParam = validationResult.error || "invalid_beta";
+      redirect(`/complete-profile?error=${errorParam}`);
     }
 
     // Use existing profile data or defaults
@@ -49,12 +63,16 @@ export default async function CompleteProfilePage({
     redirect("/");
   }
 
-  const errorMessage =
-    searchParams.error === "invalid_beta"
-      ? "Código beta inválido"
-      : searchParams.error === "required"
+  // Map error codes to user-friendly messages
+  const errorMessage = searchParams.error
+    ? searchParams.error === "required"
       ? "Todos los campos son obligatorios"
-      : null;
+      : searchParams.error === "invalid_beta"
+      ? "Código de activación inválido"
+      : getActivationErrorMessage(
+          searchParams.error as "expired" | "max_uses_reached" | "database_error"
+        )
+    : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-6 py-8">
@@ -64,14 +82,14 @@ export default async function CompleteProfilePage({
             Completa tu perfil
           </h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Ingresa tu nombre y código de acceso beta
+            Ingresa tu nombre y código de acceso
           </p>
         </div>
 
         <form action={saveProfile} className="space-y-6">
           <div className="rounded-3xl border border-surface-border bg-surface-raised p-6 space-y-5">
             <Input
-              label="Código beta"
+              label="Código de activación"
               name="beta_code"
               type="text"
               placeholder="Introduce tu código de acceso"
