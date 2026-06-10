@@ -61,7 +61,7 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
         {/* Header - Editorial Style */}
         <header className="mb-6 text-center">
           <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-            Capmetry
+            Cabmetry
           </div>
           <h1 className="mb-4 text-3xl font-light tracking-tight text-zinc-900">
             Informe Operacional

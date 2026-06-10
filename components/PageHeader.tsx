@@ -46,7 +46,7 @@ export function PageHeader({
           <div className="absolute right-0 mt-3 w-52 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl">
             <div className="border-b border-zinc-800 px-4 py-3">
               <p className="text-sm font-semibold text-white">
-                Capmetry
+                Cabmetry
               </p>
 
               <p className="text-xs text-zinc-400">
