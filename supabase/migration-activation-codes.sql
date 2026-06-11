@@ -116,3 +116,77 @@ to authenticated;
 
 comment on function public.validate_activation_code is 
   'Server-side validation function for activation codes. Works with status values: unused, used. Returns {valid: boolean, error?: string, license_type?: string}';
+
+-- =========================================
+-- NON-CONSUMING VALIDATION FUNCTION
+-- =========================================
+
+-- Read-only availability check for signup/onboarding preflight.
+-- IMPORTANT:
+-- - Does NOT lock activation_codes rows
+-- - Does NOT increment used_count
+-- - Does NOT update status
+-- - Does NOT set used_by or used_at
+-- - Keeps validate_activation_code(text, uuid) as the only consuming path
+
+create or replace function public.validate_activation_code_available(
+  p_code text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code_record record;
+begin
+  select * into v_code_record
+  from public.activation_codes
+  where code = p_code;
+
+  if not found then
+    return jsonb_build_object(
+      'valid', false,
+      'error', 'invalid_code'
+    );
+  end if;
+
+  if v_code_record.status = 'used' then
+    return jsonb_build_object(
+      'valid', false,
+      'error', 'max_uses_reached'
+    );
+  end if;
+
+  if v_code_record.expires_at is not null
+     and v_code_record.expires_at < now() then
+    return jsonb_build_object(
+      'valid', false,
+      'error', 'expired'
+    );
+  end if;
+
+  if v_code_record.used_count >= v_code_record.max_uses then
+    return jsonb_build_object(
+      'valid', false,
+      'error', 'max_uses_reached'
+    );
+  end if;
+
+  return jsonb_build_object(
+    'valid', true,
+    'license_type', v_code_record.license_type
+  );
+end;
+$$;
+
+-- Revoke all default permissions
+revoke all on function public.validate_activation_code_available(text)
+from public;
+
+-- Grant execute to pre-auth signup checks and authenticated server flows.
+grant execute on function public.validate_activation_code_available(text)
+to anon, authenticated;
+
+comment on function public.validate_activation_code_available is
+  'Read-only activation code availability check. Does not consume codes or mutate used_count/status/ownership fields.';

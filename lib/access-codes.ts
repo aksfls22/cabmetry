@@ -17,6 +17,103 @@ interface ValidationResult {
 }
 
 /**
+ * Checks whether an activation code is currently available without consuming it.
+ *
+ * This function intentionally does not require a user ID and does not mutate
+ * activation_codes. The existing validateActivationCode() function remains the
+ * only consuming validation path in this module.
+ *
+ * @param code - The activation code to check
+ * @returns ValidationResult with valid status and optional error
+ */
+export async function validateActivationCodeAvailable(
+  code: string
+): Promise<ValidationResult> {
+  try {
+    const supabase = createClient();
+
+    const { data, error } = await supabase.rpc(
+      "validate_activation_code_available",
+      {
+        p_code: code.trim().toUpperCase(),
+      }
+    );
+
+    if (error) {
+      console.error("Activation code availability check error:", error);
+      return {
+        valid: false,
+        error: "database_error",
+      };
+    }
+
+    const result = data as {
+      valid: boolean;
+      error?: string;
+      license_type?: string;
+    };
+
+    if (!result.valid) {
+      return {
+        valid: false,
+        error: result.error as ValidationResult["error"],
+      };
+    }
+
+    return {
+      valid: true,
+      licenseType: result.license_type,
+    };
+  } catch (err) {
+    console.error(
+      "Unexpected error checking activation code availability:",
+      err
+    );
+    return {
+      valid: false,
+      error: "database_error",
+    };
+  }
+}
+
+/**
+ * Checks activation code availability with backwards compatibility.
+ *
+ * Falls back to BETA_CODE only when the database availability check fails with
+ * a database_error. Invalid, expired, or exhausted database codes remain
+ * invalid and are not bypassed.
+ *
+ * @param code - The activation code to check
+ * @returns ValidationResult
+ */
+export async function validateActivationCodeAvailableWithFallback(
+  code: string
+): Promise<ValidationResult> {
+  const dbResult = await validateActivationCodeAvailable(code);
+
+  if (dbResult.valid) {
+    return dbResult;
+  }
+
+  if (dbResult.error === "database_error") {
+    const envBetaCode = process.env.BETA_CODE;
+
+    if (envBetaCode && code.trim() === envBetaCode) {
+      console.warn(
+        "Using BETA_CODE availability fallback - database validation failed. " +
+          "Ensure migration-activation-codes.sql has been run."
+      );
+      return {
+        valid: true,
+        licenseType: "beta",
+      };
+    }
+  }
+
+  return dbResult;
+}
+
+/**
  * Validates an activation code against the database
  * 
  * This function:

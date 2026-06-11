@@ -13,7 +13,8 @@ export function SignupForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [betaCode, setBetaCode] = useState("");
+  const [activationCode, setActivationCode] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -28,26 +29,31 @@ export function SignupForm() {
       return;
     }
 
+    if (!displayName.trim()) {
+      setError("El nombre visible es obligatorio");
+      return;
+    }
+
     setLoading(true);
 
-    // Validate beta code server-side BEFORE signup
+    // Validate activation code server-side BEFORE signup
     try {
-      const response = await fetch("/api/validate-beta-code", {
+      const response = await fetch("/api/validate-activation-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: betaCode.trim() }),
+        body: JSON.stringify({ code: activationCode.trim() }),
       });
 
       const data = await response.json();
 
       if (!data.valid) {
         setLoading(false);
-        setError("Código beta inválido");
+        setError("Código de activación inválido");
         return;
       }
     } catch (err) {
       setLoading(false);
-      setError("Error al validar código beta");
+      setError("Error al validar código de activación");
       return;
     }
 
@@ -60,6 +66,9 @@ export function SignupForm() {
       password,
       options: {
         emailRedirectTo: `${origin}/auth/callback`,
+        data: {
+          display_name: displayName.trim(),
+        },
       },
     });
 
@@ -86,13 +95,24 @@ export function SignupForm() {
       </p>
 
       <Input
-        label="Código beta"
+        label="Código de activación"
         type="text"
         autoComplete="off"
         placeholder="Introduce tu código de acceso"
         required
-        value={betaCode}
-        onChange={(e) => setBetaCode(e.target.value)}
+        value={activationCode}
+        onChange={(e) => setActivationCode(e.target.value)}
+      />
+
+      <Input
+        label="Nombre visible"
+        type="text"
+        autoComplete="name"
+        placeholder="Tu nombre"
+        required
+        maxLength={50}
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
       />
 
       <Input
