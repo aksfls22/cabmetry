@@ -70,16 +70,19 @@ function getPeriodBoundsUTC(period: ReportPeriod, offset: number = 0): { start: 
     localStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}T00:00:00`;
     localEnd = `${nextMonday.getFullYear()}-${String(nextMonday.getMonth() + 1).padStart(2, "0")}-${String(nextMonday.getDate()).padStart(2, "0")}T00:00:00`;
   } else {
-    // Month with offset: apply offset in months
-    const targetMonth = month + offset;
-    const targetYear = year + Math.floor((targetMonth - 1) / 12);
-    const normalizedMonth = ((targetMonth - 1) % 12) + 1;
-    
-    localStart = `${targetYear}-${String(normalizedMonth).padStart(2, "0")}-01T00:00:00`;
-    
-    const nextMonth = normalizedMonth === 12 ? 1 : normalizedMonth + 1;
-    const nextYear = normalizedMonth === 12 ? targetYear + 1 : targetYear;
-    localEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00`;
+    // Month with offset: timezone-safe using Date arithmetic
+const targetDate = new Date(year, month - 1, 1);
+
+targetDate.setMonth(targetDate.getMonth() + offset);
+
+const nextMonthDate = new Date(targetDate);
+nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+
+localStart =
+  `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}-01T00:00:00`;
+
+localEnd =
+  `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}-01T00:00:00`;
   }
 
   const startUTC = fromZonedTime(localStart, APP_TIMEZONE);

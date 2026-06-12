@@ -75,10 +75,10 @@ const estimatedDriverShare =
 
       {/* Export Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-end">
-        <div className="sm:min-w-[180px]">
+      <div className="w-full sm:w-[220px]">
           <GenerateReportButton type={periodType} offset={offset} />
         </div>
-        <div className="sm:min-w-[180px]">
+        <div className="w-full sm:w-[220px]">
           <ExportButton data={data} period={validPeriod} />
         </div>
       </div>

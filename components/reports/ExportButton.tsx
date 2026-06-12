@@ -39,7 +39,7 @@ export function ExportButton({ data, period }: ExportButtonProps) {
       variant="secondary"
       onClick={handleExport}
       disabled={isExporting}
-      fullWidth={false}
+      fullWidth={true}
       className="gap-2"
     >
       <svg

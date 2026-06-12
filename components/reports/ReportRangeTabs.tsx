@@ -91,6 +91,97 @@ export function ReportRangeTabs() {
 
       {/* Period Navigation */}
       <div className="flex items-center justify-between rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
+        {/* Quick Navigation */}
+<div className="flex flex-wrap gap-2">
+  {periodType === "dia" && (
+    <>
+      <button
+        onClick={() => router.push(`/reports?type=dia&offset=0`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        Hoy
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=dia&offset=-7`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -7d
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=dia&offset=-30`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -30d
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=dia&offset=-90`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -90d
+      </button>
+    </>
+  )}
+
+  {periodType === "semana" && (
+    <>
+      <button
+        onClick={() => router.push(`/reports?type=semana&offset=0`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        Esta
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=semana&offset=-4`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -4 sem
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=semana&offset=-12`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -12 sem
+      </button>
+    </>
+  )}
+
+  {periodType === "mes" && (
+    <>
+      <button
+        onClick={() => router.push(`/reports?type=mes&offset=0`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        Este
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=mes&offset=-3`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -3m
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=mes&offset=-6`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -6m
+      </button>
+
+      <button
+        onClick={() => router.push(`/reports?type=mes&offset=-12`)}
+        className="rounded-lg border border-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:text-white"
+      >
+        -12m
+      </button>
+    </>
+  )}
+</div>
         <button
           onClick={() => handleNavigate("prev")}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-surface-border hover:text-white"

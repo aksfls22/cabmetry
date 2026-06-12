@@ -14,7 +14,7 @@ export function GenerateReportButton({ type, offset }: GenerateReportButtonProps
       <Button
         type="button"
         variant="primary"
-        fullWidth={false}
+        fullWidth={true}
         className="gap-2"
       >
         <svg
