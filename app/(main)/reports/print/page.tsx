@@ -1,3 +1,4 @@
+import { getProfile } from "@/lib/profile";
 import { getReportData, type ReportPeriod } from "@/lib/reports";
 import { requireUser } from "@/lib/auth";
 import { formatCurrency } from "@/lib/formatters";
@@ -31,11 +32,19 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
 
   // Fetch report data with offset support
   const data = await getReportData(period, offset);
+  const profile = await getProfile();
+  const revenuePercentage = profile?.revenue_percentage ?? 1;
 
-  // Calculate efficiency (€/km)
-  const euroPorKm = data.totalKilometers > 0 
-    ? data.paidIncome / data.totalKilometers 
-    : 0;
+const driverShare =
+  data.paidIncome * revenuePercentage;
+
+const ownerShare =
+  data.paidIncome - driverShare;
+
+const compensationLabel =
+  profile?.compensation_model === "PERCENTAGE"
+    ? "Porcentaje de ganancias"
+    : "Dueño del vehículo";
 
   // Get current date/time for footer
   const now = new Date();
@@ -66,6 +75,11 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
           <h1 className="mb-4 text-3xl font-light tracking-tight text-zinc-900">
             Informe Operacional
           </h1>
+          {profile?.display_name && (
+  <div className="mb-4 text-lg font-medium text-zinc-700">
+    {profile.display_name}
+  </div>
+)}
           <div className="flex items-center justify-center gap-4 text-sm text-zinc-500">
             <span>{data.periodLabel}</span>
             <span className="text-zinc-300">•</span>
@@ -91,6 +105,45 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
 
         {/* Divider */}
         <div className="mb-8 border-t border-zinc-100"></div>
+        <section className="mb-10">
+  <div className="mb-6">
+    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+      Modelo de ingresos
+    </div>
+
+    <div className="text-lg font-medium text-zinc-900">
+      {compensationLabel}
+    </div>
+
+    <div className="mt-1 text-sm text-zinc-500">
+      {Math.round(revenuePercentage * 100)}%
+    </div>
+  </div>
+
+  <div className="grid grid-cols-2 gap-6">
+    <div>
+      <div className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">
+        Tu parte estimada
+      </div>
+
+      <div className="text-2xl font-light text-zinc-900">
+        {formatCurrency(driverShare)}
+      </div>
+    </div>
+
+    <div>
+      <div className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-zinc-400">
+        Parte propietario
+      </div>
+
+      <div className="text-2xl font-light text-zinc-900">
+        {formatCurrency(ownerShare)}
+      </div>
+    </div>
+  </div>
+</section>
+
+<div className="mb-8 border-t border-zinc-100"></div>
 
        {/* Financial Summary - Aligned Rows */}
 <section className="mb-10">
@@ -139,12 +192,6 @@ export default async function PrintReportPage({ searchParams }: PrintReportPageP
               <span className="text-sm text-zinc-600">Kilómetros</span>
               <span className="text-lg font-semibold text-zinc-900">
                 {data.totalKilometers.toFixed(1)} km
-              </span>
-            </div>
-            <div className="flex items-center justify-between border-b border-zinc-50 pb-4">
-              <span className="text-sm text-zinc-600">Eficiencia</span>
-              <span className="text-lg font-semibold text-zinc-900">
-                {formatCurrency(euroPorKm)}/km
               </span>
             </div>
           </div>

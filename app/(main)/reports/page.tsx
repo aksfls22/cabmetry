@@ -1,3 +1,4 @@
+import { getProfile } from "@/lib/profile";
 import { ReportRangeTabs } from "@/components/reports/ReportRangeTabs";
 import { ReportFinancialSummary } from "@/components/reports/ReportFinancialSummary";
 import { ReportOperationalSummary } from "@/components/reports/ReportOperationalSummary";
@@ -32,13 +33,30 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   
   const validPeriod: ReportPeriod = periodMap[periodType] ?? "hoy";
 
-  // Fetch real data with offset support for historical periods
-  const data = await getReportData(validPeriod, offset);
+ // Fetch current and previous period in parallel
+const [data, previousData] = await Promise.all([
+  getReportData(validPeriod, offset),
+  getReportData(validPeriod, offset - 1),
+]);
+  const profile = await getProfile();
+  console.log("PROFILE REPORTS:", profile);
+  const revenuePercentage =
+  profile?.revenue_percentage ?? 1;
 
-  // Calculate efficiency (€/km)
-  const euroPorKm = data.totalKilometers > 0 
-    ? data.paidIncome / data.totalKilometers 
-    : 0;
+const isPercentageModel =
+  profile?.compensation_model === "PERCENTAGE";
+
+const estimatedDriverShare =
+
+  data.paidIncome * revenuePercentage;
+  const estimatedOwnerShare =
+  data.paidIncome - estimatedDriverShare;
+  console.log("REPORT CALCULATIONS", {
+    paidIncome: data.paidIncome,
+    revenuePercentage,
+    estimatedDriverShare,
+    estimatedOwnerShare,
+  });
 
   // Period label mapping for section headers
   const periodHeaderMap = {
@@ -75,16 +93,36 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       </div>
 
       {/* Financial Statement */}
+      
       <section aria-label="Resumen financiero">
         <h2 className="mb-4 text-sm font-semibold text-zinc-400">
           Resumen de {periodHeaderMap[validPeriod]}
         </h2>
         <ReportFinancialSummary
-          ingresosCobrados={data.paidIncome}
-          pendienteCobro={data.pendingIncome}
-          gastosOperativos={data.totalExpenses}
-        />
+  ingresosCobrados={data.paidIncome}
+  pendienteCobro={data.pendingIncome}
+  gastosOperativos={data.totalExpenses}
+  isPercentageModel={isPercentageModel}
+  estimatedDriverShare={estimatedDriverShare}
+  estimatedOwnerShare={estimatedOwnerShare}
+  previousPaidIncome={previousData.paidIncome}
+/>
       </section>
+
+      {/* Driver Share - Only for percentage model */}
+      {isPercentageModel && (
+        <section aria-label="Tu parte estimada" className="rounded-2xl border border-emerald-800/30 bg-emerald-900/10 p-6">
+          <h2 className="mb-2 text-sm font-semibold text-emerald-400">
+            Tu parte estimada
+          </h2>
+          <p className="text-3xl font-bold text-emerald-300">
+            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(estimatedDriverShare)}
+          </p>
+          <p className="mt-2 text-xs text-zinc-400">
+            Basado en tu porcentaje configurado del {(revenuePercentage * 100).toFixed(0)}%
+          </p>
+        </section>
+      )}
 
       {/* Operational Metrics */}
       <section aria-label="Métricas operacionales">
@@ -94,7 +132,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <ReportOperationalSummary
           carreras={data.totalRides}
           kilometros={data.totalKilometers}
-          euroPorKm={euroPorKm}
         />
       </section>
     </div>
