@@ -1,0 +1,24 @@
+{
+    "output": {
+      "filePath": "docs/ai/repository-context.xml",
+      "style": "xml"
+    },
+    "ignore": {
+      "useGitignore": true,
+      "customPatterns": [
+        "node_modules/**",
+        ".next/**",
+        ".git/**",
+        ".vercel/**",
+        "coverage/**",
+        "dist/**",
+        "build/**",
+        "*.png",
+        "*.jpg",
+        "*.jpeg",
+        "*.webp",
+        "*.svg",
+        "*.log"
+      ]
+    }
+  }

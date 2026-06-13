@@ -164,12 +164,12 @@ function getPeriodLabel(period: ReportPeriod, offset: number = 0): string {
       return `${mondayDay} ${mondayMonth} → ${sundayDay} ${sundayMonth}`;
     }
   } else {
-    // Month with offset
-    const targetMonth = month + offset;
-    const targetYear = year + Math.floor((targetMonth - 1) / 12);
-    const normalizedMonth = ((targetMonth - 1) % 12) + 1;
-    
-    const targetDate = new Date(targetYear, normalizedMonth - 1, 1);
+  // Month with offset
+const targetDate = new Date(year, month - 1, 1);
+
+targetDate.setMonth(
+  targetDate.getMonth() + offset
+);
     
     const monthName = new Intl.DateTimeFormat("es-ES", {
       month: "long",
@@ -278,6 +278,7 @@ export async function getReportData(period: ReportPeriod, offset: number = 0): P
   // Aggregate kilometers from daily_metrics
   const totalKilometers = (metricsData ?? [])
     .reduce((sum, metric) => sum + Number(metric.kilometers ?? 0), 0);
+   
 
   return {
     paidIncome,
