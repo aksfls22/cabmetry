@@ -1,4 +1,4 @@
-import { CabmetryIcon } from "@/components/CabmetryIcon";
+import Image from "next/image";
 
 export function AuthShell({
   children,
@@ -12,7 +12,14 @@ export function AuthShell({
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 py-8">
       <div className="mb-10 flex flex-col items-center gap-3 text-center">
-        <CabmetryIcon className="h-14 w-14 shrink-0" />
+        <Image
+  src="/cabmetry-logo-horizontal.png"
+  alt="Cabmetry"
+  width={280}
+  height={80}
+  priority
+  className="h-auto w-56"
+/>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
           <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>

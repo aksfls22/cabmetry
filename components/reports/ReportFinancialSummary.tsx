@@ -111,14 +111,18 @@ function FinancialLine({
   variant: "neutral" | "expense";
 }) {
   const textColor = {
-    neutral: "text-zinc-300",
+    neutral: "text-amber-400",
     expense: "text-zinc-300",
+  }[variant];
+  const labelColor = {
+    neutral: "text-amber-400",
+    expense: "text-zinc-400",
   }[variant];
 
   
   return (
     <div className="flex items-center justify-between px-6 py-4">
-      <span className="text-sm text-zinc-400">{label}</span>
+     <span className={`text-sm ${labelColor}`}>{label}</span>
       <span className={`text-base font-semibold tabular-nums ${textColor}`}>
         {formatCurrency(value)}
       </span>
