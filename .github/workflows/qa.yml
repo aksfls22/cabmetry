@@ -1,0 +1,221 @@
+name: QA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Base quality gate (blocking): lint + type-check + build sanity.
+  # ---------------------------------------------------------------------------
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Public Supabase values are read at build time. Provide via repo secrets;
+      # fall back to non-"example" placeholders so the build passes env validation
+      # even before secrets are configured (the build makes no network calls).
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  # ---------------------------------------------------------------------------
+  # Performance QA (non-blocking): never fails the workflow / blocks deploy.
+  # Collects build, Lighthouse, route latency, dependency and hydration signals.
+  # ---------------------------------------------------------------------------
+  performance-qa:
+    name: Performance QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    env:
+      # Public Supabase values are required at build/start time. Provide them via
+      # repo secrets; fall back to harmless placeholders so the audit can boot.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+    steps:
+      # 1. setup
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      # 2. build (non-blocking, logged)
+      - name: Build (capture log)
+        continue-on-error: true
+        run: npm run build 2>&1 | tee build-performance.log
+
+      # 3. start app in background + wait for boot
+      - name: Start production server
+        continue-on-error: true
+        run: |
+          npm run start > server.log 2>&1 &
+          echo "Waiting for http://localhost:3000 ..."
+          for i in $(seq 1 30); do
+            if curl -sSf -o /dev/null http://localhost:3000; then
+              echo "Server is up after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+      # 4a. Chrome for the authenticated Lighthouse run
+      - name: Setup Chrome
+        id: chrome
+        continue-on-error: true
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      # 4b. generate Puppeteer login script + LHCI config (committed file stays qa.yml only)
+      #     The script signs in through the real /login form so @supabase/ssr writes the
+      #     session cookies into the browser; Lighthouse then audits the protected routes
+      #     (/activity, /reports) reusing that authenticated browser session.
+      - name: Prepare authenticated Lighthouse config
+        continue-on-error: true
+        run: |
+          cat > lhci-auth-puppeteer.js <<'JS'
+          const BASE_URL = process.env.QA_BASE_URL || "http://localhost:3000";
+          const EMAIL = process.env.QA_TEST_EMAIL;
+          const PASSWORD = process.env.QA_TEST_PASSWORD;
+
+          // LHCI calls this before auditing each URL, reusing the same browser.
+          module.exports = async (browser /*, context */) => {
+            if (!EMAIL || !PASSWORD) {
+              console.log("[lhci-auth] QA_TEST_EMAIL/QA_TEST_PASSWORD not set — auditing unauthenticated (expect redirects to /login).");
+              return;
+            }
+            const page = await browser.newPage();
+            try {
+              await page.goto(BASE_URL + "/login", { waitUntil: "networkidle0", timeout: 30000 });
+              const emailInput = await page.$('input[type="email"]');
+              if (!emailInput) {
+                console.log("[lhci-auth] No login form found — session already active, skipping login.");
+                return;
+              }
+              await page.type('input[type="email"]', EMAIL, { delay: 10 });
+              await page.type('input[type="password"]', PASSWORD, { delay: 10 });
+              await Promise.all([
+                page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 }).catch(() => {}),
+                page.click('button[type="submit"]'),
+              ]);
+              // Give the client-side Supabase SSR cookies a moment to persist.
+              await new Promise((r) => setTimeout(r, 2000));
+              console.log("[lhci-auth] Login attempted. Landing URL:", page.url());
+            } catch (err) {
+              console.log("[lhci-auth] Login failed:", err && err.message);
+            } finally {
+              await page.close();
+            }
+          };
+          JS
+
+          cat > lighthouserc.json <<JSON
+          {
+            "ci": {
+              "collect": {
+                "url": [
+                  "http://localhost:3000/",
+                  "http://localhost:3000/activity",
+                  "http://localhost:3000/reports"
+                ],
+                "numberOfRuns": 1,
+                "puppeteerScript": "./lhci-auth-puppeteer.js",
+                "puppeteerLaunchOptions": {
+                  "executablePath": "${CHROME_PATH:-}",
+                  "args": ["--no-sandbox", "--disable-dev-shm-usage"]
+                },
+                "settings": {
+                  "chromeFlags": "--no-sandbox --disable-dev-shm-usage"
+                }
+              },
+              "upload": { "target": "filesystem", "outputDir": "./lhci-report" }
+            }
+          }
+          JSON
+          echo "Generated lhci-auth-puppeteer.js and lighthouserc.json"
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      # 4c. lighthouse audit (authenticated, non-blocking, logged)
+      - name: Lighthouse audit
+        continue-on-error: true
+        env:
+          QA_BASE_URL: http://localhost:3000
+          QA_TEST_EMAIL: ${{ secrets.QA_TEST_EMAIL }}
+          QA_TEST_PASSWORD: ${{ secrets.QA_TEST_PASSWORD }}
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          npx --yes @lhci/cli@latest collect --config=./lighthouserc.json 2>&1 | tee lighthouse.log
+
+      # 5. route latency audit (curl timing, non-blocking, logged)
+      - name: Route latency audit
+        continue-on-error: true
+        run: |
+          : > route-timing.log
+          for path in / /activity /reports; do
+            echo "=== ${path} ===" >> route-timing.log
+            curl -s -o /dev/null \
+              -w "http_code=%{http_code} time_namelookup=%{time_namelookup}s time_connect=%{time_connect}s time_starttransfer=%{time_starttransfer}s time_total=%{time_total}s\n" \
+              "http://localhost:3000${path}" >> route-timing.log 2>&1
+          done
+          cat route-timing.log
+
+      # 6. dependency audit (non-blocking, logged)
+      - name: Dependency audit
+        continue-on-error: true
+        run: npm ls --depth=0 2>&1 | tee dependencies.log
+
+      # 7. hydration warnings scan (non-blocking, logged)
+      - name: Hydration warnings scan
+        continue-on-error: true
+        run: |
+          : > hydration-check.log
+          if [ -f build-performance.log ]; then
+            grep -iE "hydration|warning|mismatch" build-performance.log >> hydration-check.log || true
+          fi
+          if [ ! -s hydration-check.log ]; then
+            echo "No hydration/warning/mismatch entries found." >> hydration-check.log
+          fi
+          cat hydration-check.log
+
+      # 8. upload artifacts on failure
+      - name: Upload performance logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-qa-logs
+          if-no-files-found: ignore
+          path: |
+            build-performance.log
+            lighthouse.log
+            route-timing.log
+            dependencies.log
+            hydration-check.log
