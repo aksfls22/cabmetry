@@ -17,6 +17,15 @@ interface ValidationResult {
 }
 
 /**
+ * The BETA_CODE env fallback is fail-closed by default: it only activates when
+ * ACTIVATION_CODE_ALLOW_ENV_FALLBACK is explicitly set to "true". This keeps a
+ * database outage from silently opening the gate to anyone who knows BETA_CODE.
+ */
+function envFallbackEnabled(): boolean {
+  return process.env.ACTIVATION_CODE_ALLOW_ENV_FALLBACK === "true";
+}
+
+/**
  * Checks whether an activation code is currently available without consuming it.
  *
  * This function intentionally does not require a user ID and does not mutate
@@ -95,7 +104,7 @@ export async function validateActivationCodeAvailableWithFallback(
     return dbResult;
   }
 
-  if (dbResult.error === "database_error") {
+  if (dbResult.error === "database_error" && envFallbackEnabled()) {
     const envBetaCode = process.env.BETA_CODE;
 
     if (envBetaCode && code.trim() === envBetaCode) {
@@ -192,10 +201,12 @@ export async function validateActivationCodeWithFallback(
     return dbResult;
   }
   
-  // If database error (not invalid code), try env var fallback
-  if (dbResult.error === "database_error") {
+  // If database error (not invalid code), try env var fallback — but only when
+  // explicitly enabled. Default is fail-closed so a database outage cannot turn
+  // the gate into "any caller who knows BETA_CODE gets in".
+  if (dbResult.error === "database_error" && envFallbackEnabled()) {
     const envBetaCode = process.env.BETA_CODE;
-    
+
     if (envBetaCode && code.trim() === envBetaCode) {
       console.warn(
         "Using BETA_CODE fallback - database validation failed. " +

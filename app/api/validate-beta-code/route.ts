@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const { ok, retryAfter } = rateLimit(`beta:${clientIp(request)}`);
+    if (!ok) {
+      return NextResponse.json(
+        { valid: false },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
+
     const body = await request.json();
     const { code } = body;
 
