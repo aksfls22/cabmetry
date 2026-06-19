@@ -4,10 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { 
-  validateActivationCodeWithFallback, 
-  getActivationErrorMessage 
-} from "@/lib/access-codes";
 
 export const dynamic = "force-dynamic";
 
@@ -27,27 +23,16 @@ export default async function CompleteProfilePage({
     "use server";
 
     const display_name = String(formData.get("display_name") ?? "").trim();
-    const betaCode = String(formData.get("beta_code") ?? "").trim();
 
-    if (!display_name || !betaCode) {
+    if (!display_name) {
       redirect("/complete-profile?error=required");
     }
 
-    // Get current user for validation
-    const user = await requireUser();
-
-    // Validate activation code using centralized validation layer
-    // This supports both database codes and BETA_CODE env var fallback
-    const validationResult = await validateActivationCodeWithFallback(
-      betaCode,
-      user.id
-    );
-
-    if (!validationResult.valid) {
-      // Map validation errors to URL params
-      const errorParam = validationResult.error || "invalid_beta";
-      redirect(`/complete-profile?error=${errorParam}`);
-    }
+    // The activation code is enforced and consumed once, at signup, by the
+    // enforce_activation_code trigger on auth.users (migration-signup-gating.sql).
+    // This step only collects the display name — re-consuming here would double
+    // count single-use codes and lock the user out.
+    await requireUser();
 
     // Use existing profile data or defaults
     const profile = await getProfile();
@@ -64,15 +49,8 @@ export default async function CompleteProfilePage({
   }
 
   // Map error codes to user-friendly messages
-  const errorMessage = searchParams.error
-    ? searchParams.error === "required"
-      ? "Todos los campos son obligatorios"
-      : searchParams.error === "invalid_beta"
-      ? "Código de activación inválido"
-      : getActivationErrorMessage(
-          searchParams.error as "expired" | "max_uses_reached" | "database_error"
-        )
-    : null;
+  const errorMessage =
+    searchParams.error === "required" ? "El nombre visible es obligatorio" : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-6 py-8">
@@ -82,27 +60,19 @@ export default async function CompleteProfilePage({
             Completa tu perfil
           </h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Ingresa tu nombre y código de acceso
+            Ingresa tu nombre visible
           </p>
         </div>
 
         <form action={saveProfile} className="space-y-6">
           <div className="rounded-3xl border border-surface-border bg-surface-raised p-6 space-y-5">
             <Input
-              label="Código de activación"
-              name="beta_code"
-              type="text"
-              placeholder="Introduce tu código de acceso"
-              required
-              autoFocus
-              autoComplete="off"
-            />
-            <Input
               label="Nombre visible"
               name="display_name"
               type="text"
               placeholder="Tu nombre"
               required
+              autoFocus
               maxLength={50}
             />
           </div>
