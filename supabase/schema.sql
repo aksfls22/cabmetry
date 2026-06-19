@@ -122,3 +122,39 @@ for delete
 using (
   auth.uid() = user_id
 );
+
+-- =========================================
+-- DAILY METRICS (km per day)
+-- =========================================
+
+create table if not exists public.daily_metrics (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  date date not null,
+  kilometers numeric(10, 2) not null default 0 check (kilometers >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, date)
+);
+
+create index if not exists daily_metrics_user_date_idx
+  on public.daily_metrics (user_id, date desc);
+
+alter table public.daily_metrics enable row level security;
+
+create policy "Users read own daily_metrics"
+  on public.daily_metrics for select to authenticated
+  using (auth.uid() = user_id);
+
+create policy "Users insert own daily_metrics"
+  on public.daily_metrics for insert to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users update own daily_metrics"
+  on public.daily_metrics for update to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users delete own daily_metrics"
+  on public.daily_metrics for delete to authenticated
+  using (auth.uid() = user_id);
