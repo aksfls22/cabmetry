@@ -1,0 +1,160 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static analysis: SAST (semgrep), secret scanning (gitleaks), dependency audit.
+  # Non-blocking: reports findings without failing the pipeline.
+  # ---------------------------------------------------------------------------
+  static-analysis:
+    name: Static analysis (SAST + secrets + deps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Dependency audit (npm)
+        continue-on-error: true
+        run: npm audit --audit-level=high 2>&1 | tee npm-audit.log
+
+      - name: Setup Python (for semgrep)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: SAST (semgrep)
+        continue-on-error: true
+        run: |
+          pip install --quiet semgrep
+          semgrep --config p/javascript --config p/react --config p/owasp-top-ten \
+            --error --sarif --output semgrep.sarif . 2>&1 | tee semgrep.log || true
+          echo "--- semgrep summary ---"
+          semgrep --config p/owasp-top-ten --config p/javascript . 2>&1 | tail -30 || true
+
+      - name: Secret scan (gitleaks)
+        continue-on-error: true
+        run: |
+          GL_VERSION=8.18.4
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}/gitleaks_${GL_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --no-banner --redact --report-format sarif \
+            --report-path gitleaks.sarif 2>&1 | tee gitleaks.log || true
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-static-reports
+          if-no-files-found: ignore
+          path: |
+            npm-audit.log
+            semgrep.log
+            semgrep.sarif
+            gitleaks.log
+            gitleaks.sarif
+
+  # ---------------------------------------------------------------------------
+  # Dynamic checks against the running app: security headers + auth redirects.
+  # Report-only (PASS/WARN), never blocks. Promote to assertions once the
+  # security-headers change (next.config.mjs) is on main.
+  # ---------------------------------------------------------------------------
+  dynamic-security:
+    name: Dynamic security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        continue-on-error: true
+        run: npm run build
+
+      - name: Start production server
+        continue-on-error: true
+        run: |
+          npm run start > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://localhost:3000/login && { echo "up after ${i}s"; break; }
+            sleep 1
+          done
+
+      - name: Check security headers (report-only)
+        continue-on-error: true
+        run: |
+          : > security-headers.log
+          headers=$(curl -s -D - -o /dev/null http://localhost:3000/login)
+          echo "$headers" > raw-headers.log
+          check() {
+            if echo "$headers" | grep -iq "^$1:"; then
+              echo "PASS  $1" | tee -a security-headers.log
+            else
+              echo "WARN  $1 missing" | tee -a security-headers.log
+            fi
+          }
+          check "X-Frame-Options"
+          check "X-Content-Type-Options"
+          check "Referrer-Policy"
+          check "Strict-Transport-Security"
+          check "Permissions-Policy"
+          check "Content-Security-Policy"
+
+      - name: Check protected-route redirects (report-only)
+        continue-on-error: true
+        run: |
+          : > route-redirects.log
+          for p in / /activity /reports /rides/new /expenses/new /settings; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000$p")
+            loc=$(curl -s -D - -o /dev/null "http://localhost:3000$p" | grep -i '^location' | tr -d '\r')
+            if [ "$code" = "307" ] && echo "$loc" | grep -q "/login"; then
+              echo "PASS  $p -> 307 $loc" | tee -a route-redirects.log
+            else
+              echo "WARN  $p -> $code $loc (expected 307 -> /login)" | tee -a route-redirects.log
+            fi
+          done
+
+      - name: Upload dynamic security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dynamic-reports
+          if-no-files-found: ignore
+          path: |
+            security-headers.log
+            raw-headers.log
+            route-redirects.log
+            server.log
