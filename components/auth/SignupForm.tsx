@@ -68,6 +68,10 @@ export function SignupForm() {
         emailRedirectTo: `${origin}/auth/callback`,
         data: {
           display_name: displayName.trim(),
+          // Enforced server-side by the enforce_activation_code trigger on
+          // auth.users (supabase/migration-signup-gating.sql). The client-side
+          // preflight above is UX only; this metadata is the real gate input.
+          activation_code: activationCode.trim().toUpperCase(),
         },
       },
     });
