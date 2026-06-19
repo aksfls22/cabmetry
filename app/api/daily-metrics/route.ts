@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { saveDailyKilometers } from "@/lib/daily-metrics";
+import { UnauthorizedError } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,10 @@ export async function POST(request: Request) {
       success: true,
     });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     console.error("Failed to save daily kilometers:", error);
 
     return NextResponse.json(
