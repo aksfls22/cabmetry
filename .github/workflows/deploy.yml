@@ -1,0 +1,82 @@
+name: Deploy
+
+# Gated production deploy.
+#
+# Vercel's automatic git deployments are disabled (see vercel.json) so a push to
+# main does NOT deploy on its own. Instead this workflow waits for the CI gates
+# to finish and only triggers the Vercel Deploy Hook when every required
+# workflow concluded successfully for the same commit. If any gate fails, the
+# deploy hook is never called.
+#
+# Setup required (one-time):
+#   1. In Vercel: Settings -> Git -> create a Deploy Hook for the `main` branch.
+#   2. In GitHub: add the hook URL as the secret VERCEL_DEPLOY_HOOK_URL.
+#   3. Keep vercel.json's git.deploymentEnabled.main = false.
+
+on:
+  workflow_run:
+    workflows: ["QA", "E2E (GUI)"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+# Avoid concurrent/duplicate deploys for the same commit.
+concurrency:
+  group: deploy-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Trigger Vercel deploy
+    runs-on: ubuntu-latest
+    # Only consider push events on main where the triggering workflow passed.
+    # The per-commit cross-check below additionally requires the sibling
+    # workflow to have passed too.
+    if: >
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Verify all required gates passed for this commit
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Workflows that must be green before deploying. Security is
+          # report-only (continue-on-error) by design and is intentionally
+          # excluded from the deploy gate.
+          required=("QA" "E2E (GUI)")
+          deploy=true
+          for wf in "${required[@]}"; do
+            concl=$(gh api \
+              "repos/$REPO/actions/runs?head_sha=$SHA&per_page=100" \
+              --jq "[.workflow_runs[] | select(.name==\"$wf\")] | sort_by(.created_at) | last | .conclusion")
+            echo "gate: $wf -> ${concl:-<none>}"
+            if [ "$concl" != "success" ]; then
+              deploy=false
+            fi
+          done
+          if [ "$deploy" = true ]; then
+            echo "All required gates passed for $SHA."
+          else
+            echo "Not all required gates have passed (yet) for $SHA; will not deploy."
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Vercel deploy hook
+        if: steps.gate.outputs.deploy == 'true'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOOK:-}" ]; then
+            echo "::warning::VERCEL_DEPLOY_HOOK_URL is not configured — skipping deploy. Add the secret to enable deploys."
+            exit 0
+          fi
+          curl -fsSL -X POST "$HOOK" >/dev/null
+          echo "Vercel deploy hook triggered for ${{ github.event.workflow_run.head_sha }}."
