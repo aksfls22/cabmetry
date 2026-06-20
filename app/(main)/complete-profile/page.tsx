@@ -4,10 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { 
-  validateActivationCodeWithFallback, 
-  getActivationErrorMessage,
-  createUserLicense
+import {
+  activateActivationCodeWithFallback,
+  getActivationErrorMessage
 } from "@/lib/access-codes";
 
 export const dynamic = "force-dynamic";
@@ -34,25 +33,22 @@ export default async function CompleteProfilePage({
       redirect("/complete-profile?error=required");
     }
 
-    // Get current user for validation
-    const user = await requireUser();
+    // Ensure the request is authenticated before consuming a code. The license
+    // is bound to auth.uid() inside the activation function, so we never pass a
+    // user id from here.
+    await requireUser();
 
-    // Validate activation code using centralized validation layer
-    // This supports both database codes and BETA_CODE env var fallback
-    const validationResult = await validateActivationCodeWithFallback(
-      betaCode,
-      user.id
-    );
+    // Atomically consume the activation code and create/extend the license.
+    // This is the single point of activation-code consumption; consumption and
+    // license creation happen in one transaction so a code is never burned
+    // without its license. Supports the BETA_CODE env fallback when enabled.
+    const validationResult = await activateActivationCodeWithFallback(betaCode);
 
     if (!validationResult.valid) {
       // Map validation errors to URL params
       const errorParam = validationResult.error || "invalid_beta";
       redirect(`/complete-profile?error=${errorParam}`);
     }
-
-    // Create user_licenses record after successful validation
-    // This is the single point of activation code consumption
-    await createUserLicense(betaCode, user.id);
 
     // Use existing profile data or defaults
     const profile = await getProfile();

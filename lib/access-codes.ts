@@ -29,8 +29,8 @@ function envFallbackEnabled(): boolean {
  * Checks whether an activation code is currently available without consuming it.
  *
  * This function intentionally does not require a user ID and does not mutate
- * activation_codes. The existing validateActivationCode() function remains the
- * only consuming validation path in this module.
+ * activation_codes. activateActivationCode() is the only consuming path in this
+ * module.
  *
  * @param code - The activation code to check
  * @returns ValidationResult with valid status and optional error
@@ -123,42 +123,43 @@ export async function validateActivationCodeAvailableWithFallback(
 }
 
 /**
- * Validates an activation code against the database
- * 
- * This function:
- * 1. Checks if code exists and is active
- * 2. Verifies expiration date
- * 3. Checks usage limits
- * 4. Atomically increments usage counter
- * 
- * @param code - The activation code to validate
- * @param userId - The user ID attempting to use the code
+ * Atomically consumes an activation code and creates/extends the calling user's
+ * license, via the `activate_activation_code` SECURITY DEFINER function.
+ *
+ * This is the single point of activation-code consumption. Consumption and
+ * license creation happen in one database transaction, so a code can never be
+ * burned without the matching license being created. The license write runs
+ * inside the SECURITY DEFINER function, so it succeeds despite the SELECT-only
+ * RLS policy on user_licenses. The user id is taken from auth.uid() inside the
+ * function and is never trusted from the client.
+ *
+ * @param code - The activation code to consume
  * @returns ValidationResult with valid status and optional error
  */
-export async function validateActivationCode(
-  code: string,
-  userId: string
+export async function activateActivationCode(
+  code: string
 ): Promise<ValidationResult> {
   try {
     const supabase = createClient();
-    
-    // Call the database function for atomic validation + consumption
-    const { data, error } = await supabase.rpc("validate_activation_code", {
+
+    const { data, error } = await supabase.rpc("activate_activation_code", {
       p_code: code.trim().toUpperCase(),
-      p_user_id: userId,
     });
 
     if (error) {
-      console.error("Activation code validation error:", error);
+      console.error("Activation code activation error:", error);
       return {
         valid: false,
         error: "database_error",
       };
     }
 
-    // Parse the result from the database function
-    const result = data as { valid: boolean; error?: string; license_type?: string };
-    
+    const result = data as {
+      valid: boolean;
+      error?: string;
+      license_type?: string;
+    };
+
     if (!result.valid) {
       return {
         valid: false,
@@ -171,7 +172,7 @@ export async function validateActivationCode(
       licenseType: result.license_type,
     };
   } catch (err) {
-    console.error("Unexpected error validating activation code:", err);
+    console.error("Unexpected error activating activation code:", err);
     return {
       valid: false,
       error: "database_error",
@@ -180,37 +181,33 @@ export async function validateActivationCode(
 }
 
 /**
- * Validates activation code with backwards compatibility
- * 
- * Falls back to BETA_CODE environment variable if database validation fails
- * This ensures existing deployments continue working during migration
- * 
- * @param code - The activation code to validate
- * @param userId - The user ID attempting to use the code
+ * Activates an activation code with backwards compatibility.
+ *
+ * Falls back to BETA_CODE only when the database activation fails with a
+ * database_error and the env fallback is explicitly enabled. Invalid, expired,
+ * or exhausted codes remain invalid and are not bypassed. The fallback path
+ * does not create a license record (it only exists to keep the gate open during
+ * a database outage for a known beta code).
+ *
+ * @param code - The activation code to consume
  * @returns ValidationResult
  */
-export async function validateActivationCodeWithFallback(
-  code: string,
-  userId: string
+export async function activateActivationCodeWithFallback(
+  code: string
 ): Promise<ValidationResult> {
-  // Try database validation first
-  const dbResult = await validateActivationCode(code, userId);
-  
-  // If database validation succeeds, use it
+  const dbResult = await activateActivationCode(code);
+
   if (dbResult.valid) {
     return dbResult;
   }
-  
-  // If database error (not invalid code), try env var fallback — but only when
-  // explicitly enabled. Default is fail-closed so a database outage cannot turn
-  // the gate into "any caller who knows BETA_CODE gets in".
+
   if (dbResult.error === "database_error" && envFallbackEnabled()) {
     const envBetaCode = process.env.BETA_CODE;
 
     if (envBetaCode && code.trim() === envBetaCode) {
       console.warn(
-        "Using BETA_CODE fallback - database validation failed. " +
-        "Ensure migration-activation-codes.sql has been run."
+        "Using BETA_CODE activation fallback - database activation failed. " +
+          "Ensure activation-code migrations have been run."
       );
       return {
         valid: true,
@@ -218,98 +215,8 @@ export async function validateActivationCodeWithFallback(
       };
     }
   }
-  
-  // Return the database result (invalid code, expired, or max uses)
-  return dbResult;
-}
 
-/**
- * Creates a user_licenses record after successful activation code validation
- * This is the single point where activation codes are consumed and licenses are created
- * 
- * @param code - The activation code that was validated
- * @param userId - The user ID to create the license for
- */
-export async function createUserLicense(
-  code: string,
-  userId: string
-): Promise<void> {
-  try {
-    const supabase = createClient();
-    
-    // Get activation code details including duration_days
-    const { data: activationCode, error: codeError } = await supabase
-      .from("activation_codes")
-      .select("duration_days")
-      .eq("code", code.trim().toUpperCase())
-      .single();
-    
-    if (codeError || !activationCode) {
-      console.error("Error fetching activation code details:", codeError);
-      throw new Error("Failed to fetch activation code details");
-    }
-    
-    const durationDays = activationCode.duration_days || 30;
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-    const retentionUntil = new Date(expiresAt.getTime() + 365 * 24 * 60 * 60 * 1000);
-    
-    // Check if user already has an active license
-    const { data: existingLicense, error: checkError } = await supabase
-      .from("user_licenses")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("license_status", "active")
-      .single();
-    
-    if (checkError && checkError.code !== "PGRST116") {
-      // PGRST116 is "not found" which is expected if no license exists
-      console.error("Error checking existing license:", checkError);
-      throw new Error("Failed to check existing license");
-    }
-    
-    if (existingLicense) {
-      // Extend existing license
-      const currentExpiry = new Date(existingLicense.expires_at);
-      const baseDate = currentExpiry > now ? currentExpiry : now;
-      const newExpiresAt = new Date(baseDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
-      const newRetentionUntil = new Date(newExpiresAt.getTime() + 365 * 24 * 60 * 60 * 1000);
-      
-      const { error: updateError } = await supabase
-        .from("user_licenses")
-        .update({
-          expires_at: newExpiresAt.toISOString(),
-          retention_until: newRetentionUntil.toISOString(),
-          activation_code: code.trim().toUpperCase(),
-        })
-        .eq("id", existingLicense.id);
-      
-      if (updateError) {
-        console.error("Error extending license:", updateError);
-        throw new Error("Failed to extend license");
-      }
-    } else {
-      // Create new license
-      const { error: insertError } = await supabase
-        .from("user_licenses")
-        .insert({
-          user_id: userId,
-          activation_code: code.trim().toUpperCase(),
-          license_status: "active",
-          activated_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-          retention_until: retentionUntil.toISOString(),
-        });
-      
-      if (insertError) {
-        console.error("Error creating license:", insertError);
-        throw new Error("Failed to create license");
-      }
-    }
-  } catch (err) {
-    console.error("Unexpected error creating user license:", err);
-    throw err;
-  }
+  return dbResult;
 }
 
 /**
