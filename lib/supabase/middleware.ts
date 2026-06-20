@@ -46,6 +46,8 @@ export async function updateSession(request: NextRequest) {
   pathname.startsWith("/reset-password") ||
   pathname.startsWith("/auth");
   const isCompleteProfileRoute = pathname === "/complete-profile";
+  const isLicenseExpiredRoute = pathname === "/license-expired";
+  const isApiRoute = pathname.startsWith("/api");
   const isProtected =
     pathname === "/" ||
     pathname.startsWith("/rides") ||
@@ -81,6 +83,30 @@ export async function updateSession(request: NextRequest) {
       completeProfileUrl.pathname = "/complete-profile";
       completeProfileUrl.search = "";
       return NextResponse.redirect(completeProfileUrl);
+    }
+  }
+
+  // Check if authenticated user has valid license
+  if (user && !isAuthRoute && !isLicenseExpiredRoute && !isApiRoute && !isCompleteProfileRoute) {
+    const { data: license } = await supabase
+      .from("user_licenses")
+      .select("license_status, expires_at")
+      .eq("user_id", user.id)
+      .eq("license_status", "active")
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const hasValidLicense = 
+      license && 
+      license.license_status === "active" && 
+      new Date(license.expires_at) > new Date();
+
+    if (!hasValidLicense) {
+      const licenseExpiredUrl = request.nextUrl.clone();
+      licenseExpiredUrl.pathname = "/license-expired";
+      licenseExpiredUrl.search = "";
+      return NextResponse.redirect(licenseExpiredUrl);
     }
   }
 
