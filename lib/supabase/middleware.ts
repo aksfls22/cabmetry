@@ -70,7 +70,41 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(home);
   }
 
-  // Check if authenticated user needs to complete profile
+  // License check for ALL authenticated users (email + OAuth)
+  // Order: 1. no license → /complete-profile, 2. expired → /license-expired, 3. active → allow
+  if (user && !isAuthRoute && !isLicenseExpiredRoute && !isApiRoute && !isCompleteProfileRoute) {
+    const { data: license } = await supabase
+      .from("user_licenses")
+      .select("license_status, expires_at")
+      .eq("user_id", user.id)
+      .order("expires_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // 1. No license at all → redirect to complete-profile
+    if (!license) {
+      const completeProfileUrl = request.nextUrl.clone();
+      completeProfileUrl.pathname = "/complete-profile";
+      completeProfileUrl.search = "";
+      return NextResponse.redirect(completeProfileUrl);
+    }
+
+    // 2. License exists but expired → redirect to license-expired
+    const isExpired = new Date(license.expires_at) <= new Date();
+    const isActive = license.license_status === "active";
+
+    if (!isActive || isExpired) {
+      const licenseExpiredUrl = request.nextUrl.clone();
+      licenseExpiredUrl.pathname = "/license-expired";
+      licenseExpiredUrl.search = "";
+      return NextResponse.redirect(licenseExpiredUrl);
+    }
+
+    // 3. Active and not expired → allow access (continues below)
+  }
+
+  // Check if user needs to complete profile (display_name)
+  // This runs AFTER license check, so user already has a license
   if (user && !isCompleteProfileRoute && !isAuthRoute) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -83,30 +117,6 @@ export async function updateSession(request: NextRequest) {
       completeProfileUrl.pathname = "/complete-profile";
       completeProfileUrl.search = "";
       return NextResponse.redirect(completeProfileUrl);
-    }
-  }
-
-  // Check if authenticated user has valid license
-  if (user && !isAuthRoute && !isLicenseExpiredRoute && !isApiRoute && !isCompleteProfileRoute) {
-    const { data: license } = await supabase
-      .from("user_licenses")
-      .select("license_status, expires_at")
-      .eq("user_id", user.id)
-      .eq("license_status", "active")
-      .order("expires_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const hasValidLicense = 
-      license && 
-      license.license_status === "active" && 
-      new Date(license.expires_at) > new Date();
-
-    if (!hasValidLicense) {
-      const licenseExpiredUrl = request.nextUrl.clone();
-      licenseExpiredUrl.pathname = "/license-expired";
-      licenseExpiredUrl.search = "";
-      return NextResponse.redirect(licenseExpiredUrl);
     }
   }
 
