@@ -224,6 +224,95 @@ export async function validateActivationCodeWithFallback(
 }
 
 /**
+ * Creates a user_licenses record after successful activation code validation
+ * This is the single point where activation codes are consumed and licenses are created
+ * 
+ * @param code - The activation code that was validated
+ * @param userId - The user ID to create the license for
+ */
+export async function createUserLicense(
+  code: string,
+  userId: string
+): Promise<void> {
+  try {
+    const supabase = createClient();
+    
+    // Get activation code details including duration_days
+    const { data: activationCode, error: codeError } = await supabase
+      .from("activation_codes")
+      .select("duration_days")
+      .eq("code", code.trim().toUpperCase())
+      .single();
+    
+    if (codeError || !activationCode) {
+      console.error("Error fetching activation code details:", codeError);
+      throw new Error("Failed to fetch activation code details");
+    }
+    
+    const durationDays = activationCode.duration_days || 30;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+    const retentionUntil = new Date(expiresAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+    
+    // Check if user already has an active license
+    const { data: existingLicense, error: checkError } = await supabase
+      .from("user_licenses")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("license_status", "active")
+      .single();
+    
+    if (checkError && checkError.code !== "PGRST116") {
+      // PGRST116 is "not found" which is expected if no license exists
+      console.error("Error checking existing license:", checkError);
+      throw new Error("Failed to check existing license");
+    }
+    
+    if (existingLicense) {
+      // Extend existing license
+      const currentExpiry = new Date(existingLicense.expires_at);
+      const baseDate = currentExpiry > now ? currentExpiry : now;
+      const newExpiresAt = new Date(baseDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      const newRetentionUntil = new Date(newExpiresAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+      
+      const { error: updateError } = await supabase
+        .from("user_licenses")
+        .update({
+          expires_at: newExpiresAt.toISOString(),
+          retention_until: newRetentionUntil.toISOString(),
+          activation_code: code.trim().toUpperCase(),
+        })
+        .eq("id", existingLicense.id);
+      
+      if (updateError) {
+        console.error("Error extending license:", updateError);
+        throw new Error("Failed to extend license");
+      }
+    } else {
+      // Create new license
+      const { error: insertError } = await supabase
+        .from("user_licenses")
+        .insert({
+          user_id: userId,
+          activation_code: code.trim().toUpperCase(),
+          license_status: "active",
+          activated_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+          retention_until: retentionUntil.toISOString(),
+        });
+      
+      if (insertError) {
+        console.error("Error creating license:", insertError);
+        throw new Error("Failed to create license");
+      }
+    }
+  } catch (err) {
+    console.error("Unexpected error creating user license:", err);
+    throw err;
+  }
+}
+
+/**
  * Get user-friendly error message for validation errors
  */
 export function getActivationErrorMessage(error?: ValidationResult["error"]): string {

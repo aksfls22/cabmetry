@@ -9,7 +9,7 @@
 create table if not exists public.user_licenses (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  activation_code text references public.activation_codes(code),
+  activation_code text not null references public.activation_codes(code),
   license_status text not null check (license_status in ('active', 'expired', 'cancelled', 'archived')),
   activated_at timestamptz default now(),
   expires_at timestamptz not null,
@@ -41,10 +41,11 @@ alter table public.user_licenses enable row level security;
 -- 4. Create RLS policy: Users can view own licenses
 -- ============================================================================
 
-create policy " Users can view own licenses\
- on public.user_licenses
- for select
- using (auth.uid() = user_id);
+create policy "Users can view own licenses"
+on public.user_licenses
+for select
+using (auth.uid() = user_id);
+ 
 
 -- ============================================================================
 -- 5. Modify activation_codes table (additive only)

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { 
   validateActivationCodeWithFallback, 
-  getActivationErrorMessage 
+  getActivationErrorMessage,
+  createUserLicense
 } from "@/lib/access-codes";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,10 @@ export default async function CompleteProfilePage({
       const errorParam = validationResult.error || "invalid_beta";
       redirect(`/complete-profile?error=${errorParam}`);
     }
+
+    // Create user_licenses record after successful validation
+    // This is the single point of activation code consumption
+    await createUserLicense(betaCode, user.id);
 
     // Use existing profile data or defaults
     const profile = await getProfile();
