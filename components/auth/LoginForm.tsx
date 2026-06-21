@@ -30,12 +30,11 @@ export function LoginForm() {
   
     const supabase = createClient();
   
-    const { error: signInError } =
-      await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-  
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+      
     setLoading(false);
   
     if (signInError) {
@@ -44,7 +43,6 @@ export function LoginForm() {
     }
   
     router.push(redirect);
-    router.refresh();
   }
   
   async function handleGoogleLogin() {

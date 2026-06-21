@@ -63,13 +63,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && isAuthRoute) {
-    const home = request.nextUrl.clone();
-    home.pathname = "/";
-    home.search = "";
-    return NextResponse.redirect(home);
-  }
-
   // License check for ALL authenticated users (email + OAuth)
   // Order: 1. no license → /complete-profile, 2. expired → /license-expired, 3. active → allow
   if (user && !isAuthRoute && !isLicenseExpiredRoute && !isApiRoute && !isCompleteProfileRoute) {
@@ -118,6 +111,14 @@ export async function updateSession(request: NextRequest) {
       completeProfileUrl.search = "";
       return NextResponse.redirect(completeProfileUrl);
     }
+  }
+
+  // Redirect authenticated users away from auth routes (after all checks)
+  if (user && isAuthRoute) {
+    const home = request.nextUrl.clone();
+    home.pathname = "/";
+    home.search = "";
+    return NextResponse.redirect(home);
   }
 
   return supabaseResponse;

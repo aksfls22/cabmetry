@@ -86,12 +86,14 @@ begin
   select * into v_existing_license
   from public.user_licenses
   where user_id = v_user_id
-    and license_status = 'active'
+  order by expires_at desc
   limit 1;
 
   if v_existing_license.id is not null then
     update public.user_licenses
     set
+      license_status = 'active',
+      activated_at = now(),
       expires_at =
         greatest(v_existing_license.expires_at, now())
         + (v_duration_days || ' days')::interval,
