@@ -7,12 +7,16 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/";
 
-  if (code) {
-    const cookieStore = cookies();
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=auth_callback`);
+  }
 
-    const supabase = createServerClient(url, anonKey, {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -29,13 +33,15 @@ export async function GET(request: Request) {
           );
         },
       },
-    });
-
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
     }
+  );
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    console.error("Auth callback error:", error);
+    return NextResponse.redirect(`${origin}/login?error=auth_callback`);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback`);
+  return NextResponse.redirect(`${origin}${next}`);
 }

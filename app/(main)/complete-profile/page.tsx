@@ -17,6 +17,13 @@ export default async function CompleteProfilePage({
   searchParams: { error?: string };
 }) {
   const profile = await getProfile();
+  const user = await requireUser();
+
+const activationCode =
+  String(user.user_metadata?.activation_code ?? "").trim();
+
+const displayName =
+  String(user.user_metadata?.display_name ?? "").trim();
 
   // If profile already has display_name, redirect to dashboard
   if (profile?.display_name) {
@@ -42,7 +49,7 @@ export default async function CompleteProfilePage({
     // This is the single point of activation-code consumption; consumption and
     // license creation happen in one transaction so a code is never burned
     // without its license. Supports the BETA_CODE env fallback when enabled.
-    const validationResult = await activateActivationCodeWithFallback(betaCode);
+       const validationResult = await activateActivationCodeWithFallback(betaCode);
 
     if (!validationResult.valid) {
       // Map validation errors to URL params
@@ -52,6 +59,7 @@ export default async function CompleteProfilePage({
 
     // Use existing profile data or defaults
     const profile = await getProfile();
+    
 
     await updateProfile({
       display_name,
@@ -89,23 +97,24 @@ export default async function CompleteProfilePage({
 
         <form action={saveProfile} className="space-y-6">
           <div className="rounded-3xl border border-surface-border bg-surface-raised p-6 space-y-5">
-            <Input
-              label="Código de activación"
-              name="beta_code"
-              type="text"
-              placeholder="Introduce tu código de acceso"
-              required
-              autoFocus
-              autoComplete="off"
-            />
-            <Input
-              label="Nombre visible"
-              name="display_name"
-              type="text"
-              placeholder="Tu nombre"
-              required
-              maxLength={50}
-            />
+          <Input
+  label="Código de activación"
+  name="beta_code"
+  type="text"
+  defaultValue={activationCode}
+  required
+  readOnly
+  autoComplete="off"
+/>
+<Input
+  label="Nombre visible"
+  name="display_name"
+  type="text"
+  defaultValue={displayName}
+  required
+  readOnly
+  maxLength={50}
+/>
           </div>
 
           {errorMessage && (
